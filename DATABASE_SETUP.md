@@ -215,3 +215,94 @@ To use the database in a new session:
 4. Start querying!
 
 The connection configuration is persistent and ready to use anytime.
+
+---
+
+## 🧠 Knowledge Base RAG Setup
+
+### Schema Initialization
+
+The KB RAG system uses pgvector to store embedded knowledge chunks. To initialize:
+
+1. **Run the SQL setup**:
+   - Open Supabase SQL Editor
+   - Copy contents from `sql/01_init_kb.sql`
+   - Execute the SQL
+
+2. **Verify setup**:
+   ```sql
+   -- Check if vector extension is enabled
+   SELECT * FROM pg_extension WHERE extname = 'vector';
+
+   -- Check if kb_chunks table exists
+   SELECT * FROM kb_chunk_stats;
+   ```
+
+### Schema Overview
+
+The `kb_chunks` table stores knowledge base content with embeddings:
+
+```sql
+CREATE TABLE kb_chunks (
+    id BIGSERIAL PRIMARY KEY,
+    source_file TEXT NOT NULL,           -- Which MD file
+    section_title TEXT,                  -- Markdown section heading
+    content TEXT NOT NULL,               -- Actual chunk text
+    tags TEXT[],                         -- Categories (archetype, framework, etc)
+    metadata JSONB,                      -- Additional structured data
+    embedding vector(1536),              -- OpenAI text-embedding-3-small
+    created_at TIMESTAMP WITH TIME ZONE,
+    updated_at TIMESTAMP WITH TIME ZONE,
+    chunk_index INTEGER,                 -- Chunk number within file
+    total_chunks INTEGER,                -- Total chunks in file
+    char_count INTEGER                   -- Size of chunk
+);
+```
+
+### Indexes
+
+- **HNSW index** on embeddings for fast similarity search
+- **GIN index** on tags for filtering
+- **B-tree indexes** on source_file and created_at
+
+### Helper Functions
+
+**search_kb(query_embedding, match_threshold, match_count, filter_tags)**
+- Semantic search with optional tag filtering
+- Returns top K most similar chunks
+- Example:
+  ```sql
+  SELECT * FROM search_kb(
+      your_query_embedding,
+      0.5,  -- similarity threshold
+      10,   -- number of results
+      ARRAY['archetype', 'story']  -- filter tags
+  );
+  ```
+
+### Embedding Configuration
+
+**Recommended: OpenAI text-embedding-3-small**
+- Dimensions: 1536
+- Cost: $0.02 per 1M tokens
+- Quality: Excellent for semantic search
+- Speed: Fast
+
+**Alternative: Voyage AI voyage-2**
+- Dimensions: 1024 (requires schema change to `vector(1024)`)
+- Quality: Slightly better for some use cases
+- Cost: Competitive
+
+To change embedding provider:
+1. Update `vector(1536)` in `sql/01_init_kb.sql`
+2. Update `config.embedding.provider` in `scripts/config.js`
+3. Re-run SQL setup
+4. Re-ingest knowledge base
+
+### Next Steps for Prompt 2
+
+- [ ] Implement knowledge base ingestion script
+- [ ] Add OpenAI API key to `.env`
+- [ ] Test chunking strategy on sample MD files
+- [ ] Verify embedding + insertion pipeline
+- [ ] Build RAG retrieval helper functions
