@@ -6,83 +6,83 @@
 import { searchKB } from '@/lib/rag/search';
 import { callClaude } from '@/lib/anthropicClient';
 import { InsightOutput } from './types';
+import {
+  AGENT_MODEL,
+  AGENT_TEMPERATURE,
+  MAX_TOKENS_INSIGHT,
+  RAG_TOP_K,
+  RAG_SIMILARITY_THRESHOLD,
+  debugLog,
+} from './config';
+import { buildInsightSystemPrompt } from './prompts';
 
 /**
  * Insight Agent
  * Analyzes user's creative challenge through emotional and archetypal lens
  */
 export async function runInsightAgent(userText: string): Promise<InsightOutput> {
+  const startTime = Date.now();
   console.log('[Insight Agent] Starting analysis...');
+  debugLog('InsightAgent', 'Input length', { chars: userText.length });
 
-  // Step 1: Search KB for relevant context
-  const kbQuery = `creative archetypes emotional patterns psychological frameworks core wound core desire ${userText.slice(0, 100)}`;
-
-  const searchResults = await searchKB(kbQuery, {
-    k: 8,
-    similarityThreshold: 0.5,
-  });
-
-  // Format KB context
-  const kbContext = searchResults.length > 0
-    ? searchResults
-        .map((r, i) => {
-          const source = r.sectionTitle
-            ? `${r.sourceFile} - ${r.sectionTitle}`
-            : r.sourceFile;
-          return `[${i + 1}] Source: ${source}\n${r.content}`;
-        })
-        .join('\n\n---\n\n')
-    : 'No relevant KB context found.';
-
-  // Step 2: Build system prompt
-  const systemPrompt = `You are the Insight Agent, an expert in emotional intelligence and creative psychology.
-
-Your role is to analyze the user's creative challenge through the lens of archetypes, emotional patterns, and psychological frameworks.
-
-Knowledge base context:
-${kbContext}
-
-Your task:
-1. Identify the emotional summary of the user's situation
-2. Detect the core wound (fear, pain, or limiting belief)
-3. Identify the core desire (what they truly want)
-4. Suggest a creative archetype that fits their journey
-5. Extract supporting quotes from the KB context that resonate with their situation
-
-You MUST respond with valid JSON matching this exact schema:
-
-{
-  "emotional_summary": "A 2-3 sentence emotional analysis of their situation",
-  "core_wound": "The primary fear, pain, or limiting belief",
-  "core_desire": "What they truly want to achieve or become",
-  "archetype_guess": "The creative archetype (e.g., The Seeker, The Creator, The Rebel, etc.)",
-  "supporting_quotes": ["Quote 1 from KB", "Quote 2 from KB", "Quote 3 from KB"]
-}
-
-Important:
-- Use the KB context to inform your analysis
-- Extract actual quotes from the provided KB context
-- Be empathetic but honest
-- Focus on emotional truth, not surface-level analysis
-- Respond ONLY with valid JSON, no other text`;
-
-  // Step 3: Call Claude
   try {
+    // Step 1: Search KB for relevant context
+    const kbQuery = `creative archetypes emotional patterns psychological frameworks core wound core desire ${userText.slice(0, 100)}`;
+
+    const searchResults = await searchKB(kbQuery, {
+      k: RAG_TOP_K,
+      similarityThreshold: RAG_SIMILARITY_THRESHOLD,
+    });
+
+    // Format KB context
+    const kbContext = searchResults.length > 0
+      ? searchResults
+          .map((r, i) => {
+            const source = r.sectionTitle
+              ? `${r.sourceFile} - ${r.sectionTitle}`
+              : r.sourceFile;
+            return `[${i + 1}] Source: ${source}\n${r.content}`;
+          })
+          .join('\n\n---\n\n')
+      : 'No relevant KB context found.';
+
+    debugLog('InsightAgent', 'KB context retrieved', {
+      chunks: searchResults.length,
+      contextLength: kbContext.length,
+    });
+
+    // Step 2: Build system prompt using prompt builder
+    const systemPrompt = buildInsightSystemPrompt(kbContext);
+
+    // Step 3: Call Claude with config values
     const result = await callClaude<InsightOutput>(
       systemPrompt,
       userText,
       {
-        model: 'claude-3-5-haiku-20241022',
-        maxTokens: 1500,
-        temperature: 1.0,
+        model: AGENT_MODEL,
+        maxTokens: MAX_TOKENS_INSIGHT,
+        temperature: AGENT_TEMPERATURE,
       }
     );
 
-    console.log('[Insight Agent] Analysis complete');
+    const duration = Date.now() - startTime;
+    console.log(`[Insight Agent] Analysis complete (${duration}ms)`);
+    debugLog('InsightAgent', 'Output', {
+      archetype: result.archetype_guess,
+      quotesCount: result.supporting_quotes.length,
+      duration,
+    });
+
     return result;
 
   } catch (error: any) {
-    console.error('[Insight Agent] Error:', error.message);
-    throw new Error(`Insight Agent failed: ${error.message}`);
+    const duration = Date.now() - startTime;
+    console.error(`[Insight Agent] Error after ${duration}ms:`, error.message);
+
+    // Enhanced error with context
+    if (error.message.includes('JSON')) {
+      throw new Error(`InsightAgent: Failed to parse JSON response - ${error.message}`);
+    }
+    throw new Error(`InsightAgent: ${error.message}`);
   }
 }

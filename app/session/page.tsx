@@ -65,6 +65,7 @@ export default function SessionPage() {
   const [result, setResult] = useState<SessionResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showRawJson, setShowRawJson] = useState(false);
 
   const handleGenerateSession = async () => {
     if (!userInput.trim()) {
@@ -398,6 +399,21 @@ export default function SessionPage() {
                 Session completed in {(result.report.totalDuration / 1000).toFixed(2)}s
               </div>
             )}
+
+            {/* Debug: Show Raw JSON */}
+            <div className="bg-white rounded-xl shadow p-4">
+              <button
+                onClick={() => setShowRawJson(!showRawJson)}
+                className="text-sm text-purple-600 hover:text-purple-700 font-semibold"
+              >
+                {showRawJson ? '▼ Hide Raw JSON' : '▶ Show Raw JSON (Debug)'}
+              </button>
+              {showRawJson && (
+                <pre className="mt-4 bg-gray-50 rounded-lg p-4 overflow-auto text-xs whitespace-pre-wrap border border-gray-200">
+                  {JSON.stringify(result.report, null, 2)}
+                </pre>
+              )}
+            </div>
           </div>
         )}
 

@@ -6,6 +6,15 @@
 import { searchKB } from '@/lib/rag/search';
 import { callClaude } from '@/lib/anthropicClient';
 import { InsightOutput, StoryOutput } from './types';
+import {
+  AGENT_MODEL,
+  AGENT_TEMPERATURE,
+  MAX_TOKENS_STORY,
+  RAG_TOP_K,
+  RAG_SIMILARITY_THRESHOLD,
+  debugLog,
+} from './config';
+import { buildStorySystemPrompt, formatInsightForPrompt } from './prompts';
 
 /**
  * Story Architect Agent
@@ -15,83 +24,70 @@ export async function runStoryAgent(
   userText: string,
   insight: InsightOutput
 ): Promise<StoryOutput> {
+  const startTime = Date.now();
   console.log('[Story Agent] Crafting narrative...');
-
-  // Step 1: Search KB for narrative structures
-  const kbQuery = `hero's journey narrative structure mythological patterns story archetype transformation ${insight.archetype_guess}`;
-
-  const searchResults = await searchKB(kbQuery, {
-    k: 8,
-    similarityThreshold: 0.5,
+  debugLog('StoryAgent', 'Input', {
+    userTextLength: userText.length,
+    archetype: insight.archetype_guess,
   });
 
-  // Format KB context
-  const kbContext = searchResults.length > 0
-    ? searchResults
-        .map((r, i) => {
-          const source = r.sectionTitle
-            ? `${r.sourceFile} - ${r.sectionTitle}`
-            : r.sourceFile;
-          return `[${i + 1}] Source: ${source}\n${r.content}`;
-        })
-        .join('\n\n---\n\n')
-    : 'No relevant KB context found.';
-
-  // Step 2: Build system prompt with Insight context
-  const systemPrompt = `You are the Story Architect, an expert in narrative structures and mythological patterns.
-
-Your role is to transform the user's creative challenge into a compelling hero's journey narrative.
-
-Knowledge base context:
-${kbContext}
-
-Insight from previous agent:
-- Emotional summary: ${insight.emotional_summary}
-- Core wound: ${insight.core_wound}
-- Core desire: ${insight.core_desire}
-- Archetype: ${insight.archetype_guess}
-
-Your task:
-1. Describe the hero (the user) in their current state
-2. Identify the villain (the force opposing them - internal or external)
-3. Describe their current chapter in the journey
-4. Describe their desired chapter (where they want to be)
-5. Write a compelling story paragraph that brings it all together
-
-You MUST respond with valid JSON matching this exact schema:
-
-{
-  "hero_description": "Who the user is right now - their strengths, struggles, and current identity",
-  "villain_description": "The force opposing them (fear, system, belief, person, etc.)",
-  "current_chapter": "Where they are now in their journey (1-2 sentences)",
-  "desired_chapter": "Where they want to be (1-2 sentences)",
-  "story_paragraph": "A 3-5 sentence narrative that ties it all together as a hero's journey"
-}
-
-Important:
-- Use the KB context to inform narrative frameworks
-- Build on the Insight agent's emotional analysis
-- Make it personal and resonant
-- Use vivid, evocative language
-- Respond ONLY with valid JSON, no other text`;
-
-  // Step 3: Call Claude
   try {
+    // Step 1: Search KB for narrative structures
+    const kbQuery = `hero's journey narrative structure mythological patterns story archetype transformation ${insight.archetype_guess}`;
+
+    const searchResults = await searchKB(kbQuery, {
+      k: RAG_TOP_K,
+      similarityThreshold: RAG_SIMILARITY_THRESHOLD,
+    });
+
+    // Format KB context
+    const kbContext = searchResults.length > 0
+      ? searchResults
+          .map((r, i) => {
+            const source = r.sectionTitle
+              ? `${r.sourceFile} - ${r.sectionTitle}`
+              : r.sourceFile;
+            return `[${i + 1}] Source: ${source}\n${r.content}`;
+          })
+          .join('\n\n---\n\n')
+      : 'No relevant KB context found.';
+
+    debugLog('StoryAgent', 'KB context retrieved', {
+      chunks: searchResults.length,
+      contextLength: kbContext.length,
+    });
+
+    // Step 2: Build system prompt using prompt builder
+    const insightJson = formatInsightForPrompt(insight);
+    const systemPrompt = buildStorySystemPrompt(kbContext, insightJson);
+
+    // Step 3: Call Claude with config values
     const result = await callClaude<StoryOutput>(
       systemPrompt,
       userText,
       {
-        model: 'claude-3-5-haiku-20241022',
-        maxTokens: 1500,
-        temperature: 1.0,
+        model: AGENT_MODEL,
+        maxTokens: MAX_TOKENS_STORY,
+        temperature: AGENT_TEMPERATURE,
       }
     );
 
-    console.log('[Story Agent] Narrative complete');
+    const duration = Date.now() - startTime;
+    console.log(`[Story Agent] Narrative complete (${duration}ms)`);
+    debugLog('StoryAgent', 'Output', {
+      storyLength: result.story_paragraph.length,
+      duration,
+    });
+
     return result;
 
   } catch (error: any) {
-    console.error('[Story Agent] Error:', error.message);
-    throw new Error(`Story Agent failed: ${error.message}`);
+    const duration = Date.now() - startTime;
+    console.error(`[Story Agent] Error after ${duration}ms:`, error.message);
+
+    if (error.message.includes('JSON')) {
+      throw new Error(`StoryAgent: Failed to parse JSON response - ${error.message}`);
+    }
+    throw new Error(`StoryAgent: ${error.message}`);
   }
 }
