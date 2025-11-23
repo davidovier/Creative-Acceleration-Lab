@@ -55,10 +55,12 @@ const config = {
             default: 'claude-3-5-sonnet-20241022',
             // For complex reasoning (slower, more expensive)
             reasoning: 'claude-3-opus-20240229',
-            // For fast, simple tasks
+            // For fast, simple tasks (verified working)
             fast: 'claude-3-haiku-20240307',
         },
         maxTokens: 4096,
+        // Note: As of testing, only haiku model was accessible
+        // Sonnet/Opus may require API tier upgrade
     },
 
     // ========================================================================
