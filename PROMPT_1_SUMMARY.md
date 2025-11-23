@@ -297,14 +297,18 @@ The `.env` file contains:
 - Add `OPENAI_API_KEY` to `.env` before Prompt 2
 - Add `ANTHROPIC_API_KEY` to `.env` before Prompt 2
 
-### 2. SQL Not Yet Executed
-The SQL schema exists in `sql/01_init_kb.sql` but has **not been run** on Supabase.
+### 2. SQL Schema Executed ✅
+The SQL schema has been **successfully executed** on Supabase.
 
-**Action Required Before Prompt 2**:
-1. Open Supabase SQL Editor
-2. Copy contents of `sql/01_init_kb.sql`
-3. Execute the SQL
-4. Verify with: `SELECT * FROM kb_chunk_stats;`
+**Verified**:
+- ✅ pgvector extension enabled
+- ✅ kb_chunks table created with all columns
+- ✅ 6 indexes created (HNSW, GIN, B-tree)
+- ✅ search_kb() function created
+- ✅ kb_chunk_stats view created
+- ✅ Auto-update trigger configured
+
+**Database is ready for ingestion!**
 
 ### 3. No Ingestion Script Yet
 This is **intentional** (Prompt 1 scope was DB + planning only).

@@ -222,21 +222,25 @@ The connection configuration is persistent and ready to use anytime.
 
 ### Schema Initialization
 
-The KB RAG system uses pgvector to store embedded knowledge chunks. To initialize:
+✅ **Status: COMPLETED**
 
-1. **Run the SQL setup**:
-   - Open Supabase SQL Editor
-   - Copy contents from `sql/01_init_kb.sql`
-   - Execute the SQL
+The KB RAG system schema has been initialized on Supabase:
 
-2. **Verify setup**:
-   ```sql
-   -- Check if vector extension is enabled
-   SELECT * FROM pg_extension WHERE extname = 'vector';
+**What was created:**
+- ✅ pgvector extension enabled
+- ✅ kb_chunks table with vector(1536) embeddings
+- ✅ HNSW index for fast similarity search
+- ✅ GIN indexes for tags and metadata
+- ✅ search_kb() helper function
+- ✅ kb_chunk_stats monitoring view
+- ✅ Auto-update trigger
 
-   -- Check if kb_chunks table exists
-   SELECT * FROM kb_chunk_stats;
-   ```
+**Current state:**
+- Table: `kb_chunks` (0 chunks, ready for ingestion)
+- Indexes: 6 created
+- Functions: search_kb() ready
+
+The database is now ready for knowledge base ingestion.
 
 ### Schema Overview
 
