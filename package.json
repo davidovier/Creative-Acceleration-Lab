@@ -1,21 +1,45 @@
 {
   "name": "creative-acceleration-lab",
   "version": "1.0.0",
-  "description": "Creative Acceleration Lab - Database Connection",
+  "description": "Creative Acceleration Lab - Multi-Agent RAG System",
   "main": "db_connection.js",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
     "test:db": "node db_connection.js",
-    "test:config": "node scripts/config.js"
+    "test:config": "node scripts/config.js",
+    "ingest": "node scripts/ingest_kb.js",
+    "test:rate-limiter": "node scripts/test-rate-limiter.js"
   },
   "dependencies": {
     "pg": "^8.11.0",
-    "dotenv": "^16.3.0"
+    "dotenv": "^16.3.0",
+    "next": "^14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "openai": "^4.28.0",
+    "@anthropic-ai/sdk": "^0.17.0",
+    "@supabase/supabase-js": "^2.39.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.3.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0"
+  },
   "keywords": [
     "database",
     "supabase",
-    "postgresql"
+    "postgresql",
+    "rag",
+    "ai",
+    "claude",
+    "openai"
   ],
   "author": "Creative Acceleration Lab",
   "license": "MIT"
