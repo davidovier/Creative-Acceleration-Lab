@@ -1,0 +1,16 @@
+# Python dependencies for database connection
+
+# Core database drivers
+psycopg2-binary>=2.9.0    # PostgreSQL adapter
+sqlalchemy>=2.0.0          # SQL toolkit and ORM
+asyncpg>=0.29.0            # Async PostgreSQL driver
+
+# Environment management
+python-dotenv>=1.0.0       # Load .env files
+
+# Optional but recommended
+pandas>=2.0.0              # Data analysis (if using DataFrames)
+alembic>=1.12.0            # Database migrations (optional)
+
+# Supabase SDK (optional, for REST API access)
+supabase>=2.0.0            # Supabase Python client
