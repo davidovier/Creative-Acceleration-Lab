@@ -33,3 +33,10 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+
+# Next.js build outputs
+.next/
+out/
+
+# Vercel
+.vercel
