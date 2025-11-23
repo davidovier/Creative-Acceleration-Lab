@@ -1,56 +1,60 @@
 /**
- * Session API (Stub)
- * Will be fully implemented in Prompt 4 with agent orchestration
+ * Session API
+ * Multi-agent orchestration with RAG-powered Claude agents
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { runFullSession, validateUserInput } from '@/lib/agents/orchestrator';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60; // 1 minute (will increase when agents are implemented)
+export const maxDuration = 60; // 1 minute for agent execution
 
 /**
  * POST /api/session
  * Generate multi-agent session report
  *
- * TODO (Prompt 4):
- * - Implement agent orchestration
- * - Call 4 agents sequentially (Insight, Story, Prototype, Symbol)
- * - Use RAG search for each agent
- * - Track costs
- * - Enforce rate limits
+ * Request body:
+ * {
+ *   "userText": "User's creative challenge description"
+ * }
+ *
+ * Response:
+ * {
+ *   "ok": true,
+ *   "report": SessionReport (includes insight, story, prototype, symbol)
+ * }
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userQuery } = body;
+    const { userText } = body;
 
-    if (!userQuery || typeof userQuery !== 'string') {
+    // Validate input
+    const validation = validateUserInput(userText);
+    if (!validation.valid) {
       return NextResponse.json(
-        { error: 'userQuery is required and must be a string' },
+        { error: validation.error },
         { status: 400 }
       );
     }
 
-    // Stub response for now
+    // Run full session with all agents
+    console.log(`[API] Starting session for user text (${userText.length} chars)`);
+    const report = await runFullSession(userText);
+
+    console.log('[API] Session complete, returning report');
     return NextResponse.json({
-      status: 'session endpoint not implemented yet',
-      message: 'This endpoint will be fully implemented in Prompt 4 with agent orchestration',
-      userQuery: userQuery,
-      timestamp: new Date().toISOString(),
-      plannedFeatures: [
-        'RAG search for context retrieval',
-        'Sequential agent execution (Insight → Story → Prototype → Symbol)',
-        'Cost tracking and rate limiting',
-        'Structured JSON output with all agent responses',
-      ],
+      ok: true,
+      report,
     });
 
   } catch (error: any) {
-    console.error('Session error:', error);
+    console.error('[API] Session error:', error);
     return NextResponse.json(
       {
         error: 'Session failed',
         message: error.message,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       },
       { status: 500 }
     );

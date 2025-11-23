@@ -7,11 +7,57 @@
 
 import { useState } from 'react';
 
+interface InsightOutput {
+  emotional_summary: string;
+  core_wound: string;
+  core_desire: string;
+  archetype_guess: string;
+  supporting_quotes: string[];
+}
+
+interface StoryOutput {
+  hero_description: string;
+  villain_description: string;
+  current_chapter: string;
+  desired_chapter: string;
+  story_paragraph: string;
+}
+
+interface PrototypeOutput {
+  goal: string;
+  constraints: string[];
+  day_by_day_plan: {
+    day: number;
+    focus: string;
+    tasks: string[];
+  }[];
+  potential_ai_features: string[];
+  risks: string[];
+}
+
+interface SymbolOutput {
+  primary_symbol: string;
+  secondary_symbols: string[];
+  tattoo_concepts: string[];
+  ui_motifs: string[];
+  color_palette_suggestions: string[];
+}
+
+interface SessionReport {
+  userText: string;
+  timestamp: string;
+  insight: InsightOutput;
+  story: StoryOutput;
+  prototype: PrototypeOutput;
+  symbol: SymbolOutput;
+  totalDuration?: number;
+}
+
 interface SessionResult {
-  status: string;
-  message?: string;
-  results?: any[];
+  ok: boolean;
+  report?: SessionReport;
   error?: string;
+  message?: string;
 }
 
 export default function SessionPage() {
@@ -34,7 +80,7 @@ export default function SessionPage() {
       const res = await fetch('/api/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userQuery: userInput }),
+        body: JSON.stringify({ userText: userInput }),
       });
 
       if (!res.ok) {
@@ -116,43 +162,250 @@ export default function SessionPage() {
         </div>
 
         {/* Results Section */}
-        {result && (
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">
-              Session Report
-            </h2>
+        {result && result.ok && result.report && (
+          <div className="space-y-8">
+            {/* Insight Section */}
+            <div className="bg-white rounded-2xl shadow-xl p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-2xl">
+                  🔍
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900">Emotional Insight</h2>
+                  <p className="text-sm text-gray-500">Archetype: {result.report.insight.archetype_guess}</p>
+                </div>
+              </div>
 
-            {result.status === 'session endpoint not implemented yet' ? (
-              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-6">
-                <div className="flex items-start gap-3">
-                  <svg className="w-6 h-6 text-yellow-600 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Emotional Summary</h3>
+                  <p className="text-gray-700">{result.report.insight.emotional_summary}</p>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="bg-red-50 rounded-xl p-4">
+                    <h4 className="font-semibold text-red-900 mb-2">Core Wound</h4>
+                    <p className="text-red-800 text-sm">{result.report.insight.core_wound}</p>
+                  </div>
+                  <div className="bg-green-50 rounded-xl p-4">
+                    <h4 className="font-semibold text-green-900 mb-2">Core Desire</h4>
+                    <p className="text-green-800 text-sm">{result.report.insight.core_desire}</p>
+                  </div>
+                </div>
+
+                {result.report.insight.supporting_quotes.length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold text-yellow-900 mb-2">
-                      Session Endpoint In Development
-                    </h3>
-                    <p className="text-yellow-800">
-                      The multi-agent session endpoint is currently being implemented.
-                      This will be available in Prompt 4 with full agent orchestration.
-                    </p>
-                    <div className="mt-4 text-sm text-yellow-700">
-                      <strong>Coming soon:</strong>
-                      <ul className="list-disc list-inside mt-2 space-y-1">
-                        <li>Insight Agent (archetypes & emotion)</li>
-                        <li>Story Architect (narrative & myth)</li>
-                        <li>Prototype Engineer (5-day sprint plan)</li>
-                        <li>Symbol Weaver (visual symbols & design)</li>
-                      </ul>
+                    <h4 className="font-semibold text-gray-800 mb-3">Supporting Wisdom from Knowledge Base</h4>
+                    <div className="space-y-2">
+                      {result.report.insight.supporting_quotes.map((quote, i) => (
+                        <div key={i} className="border-l-4 border-purple-400 pl-4 py-2 bg-purple-50 rounded-r-lg">
+                          <p className="text-sm text-gray-700 italic">{quote}</p>
+                        </div>
+                      ))}
                     </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Story Section */}
+            <div className="bg-white rounded-2xl shadow-xl p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-2xl">
+                  📖
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900">Your Story Arc</h2>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6">
+                  <p className="text-gray-800 leading-relaxed">{result.report.story.story_paragraph}</p>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-semibold text-blue-900 mb-2">The Hero (You)</h4>
+                    <p className="text-gray-700 text-sm">{result.report.story.hero_description}</p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-red-900 mb-2">The Villain (Challenge)</h4>
+                    <p className="text-gray-700 text-sm">{result.report.story.villain_description}</p>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <h4 className="font-semibold text-gray-900 mb-2">Current Chapter</h4>
+                    <p className="text-gray-700 text-sm">{result.report.story.current_chapter}</p>
+                  </div>
+                  <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4">
+                    <h4 className="font-semibold text-green-900 mb-2">Desired Chapter</h4>
+                    <p className="text-gray-700 text-sm">{result.report.story.desired_chapter}</p>
                   </div>
                 </div>
               </div>
-            ) : (
-              <pre className="bg-gray-50 rounded-xl p-6 overflow-auto text-sm text-gray-800 whitespace-pre-wrap">
-                {JSON.stringify(result, null, 2)}
-              </pre>
+            </div>
+
+            {/* Prototype Section */}
+            <div className="bg-white rounded-2xl shadow-xl p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center text-2xl">
+                  ⚙️
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900">5-Day Prototype Plan</h2>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-green-50 rounded-xl p-4">
+                  <h4 className="font-semibold text-green-900 mb-2">Sprint Goal</h4>
+                  <p className="text-gray-800">{result.report.prototype.goal}</p>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-3">Constraints (Focus Points)</h4>
+                  <ul className="space-y-2">
+                    {result.report.prototype.constraints.map((constraint, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="text-orange-500 mt-1">▸</span>
+                        <span className="text-gray-700 text-sm">{constraint}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-4">Day-by-Day Plan</h4>
+                  <div className="space-y-4">
+                    {result.report.prototype.day_by_day_plan.map((day) => (
+                      <div key={day.day} className="border-2 border-gray-200 rounded-xl p-4 hover:border-green-300 transition-colors">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 bg-green-500 text-white rounded-lg flex items-center justify-center font-bold">
+                            {day.day}
+                          </div>
+                          <h5 className="font-semibold text-gray-900">{day.focus}</h5>
+                        </div>
+                        <ul className="space-y-1 ml-13">
+                          {day.tasks.map((task, i) => (
+                            <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                              <span className="text-green-500">✓</span>
+                              <span>{task}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-semibold text-gray-800 mb-3">Potential AI Features</h4>
+                    <ul className="space-y-2">
+                      {result.report.prototype.potential_ai_features.map((feature, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="text-blue-500">◆</span>
+                          <span className="text-gray-700 text-sm">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-800 mb-3">Risks & Mitigation</h4>
+                    <ul className="space-y-2">
+                      {result.report.prototype.risks.map((risk, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="text-red-500">⚠</span>
+                          <span className="text-gray-700 text-sm">{risk}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Symbol Section */}
+            <div className="bg-white rounded-2xl shadow-xl p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 bg-pink-100 rounded-xl flex items-center justify-center text-2xl">
+                  ✨
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900">Symbols & Visuals</h2>
+              </div>
+
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl p-6">
+                  <h4 className="font-semibold text-pink-900 mb-3">Primary Symbol</h4>
+                  <p className="text-gray-800">{result.report.symbol.primary_symbol}</p>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-3">Secondary Symbols</h4>
+                  <div className="grid md:grid-cols-3 gap-3">
+                    {result.report.symbol.secondary_symbols.map((symbol, i) => (
+                      <div key={i} className="bg-purple-50 rounded-lg p-3 text-sm text-gray-700">
+                        {symbol}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-3">Tattoo Concepts</h4>
+                  <div className="space-y-2">
+                    {result.report.symbol.tattoo_concepts.map((concept, i) => (
+                      <div key={i} className="border-l-4 border-pink-400 pl-4 py-2 bg-pink-50 rounded-r-lg">
+                        <p className="text-sm text-gray-700">{concept}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-3">UI Design Motifs</h4>
+                  <ul className="space-y-2">
+                    {result.report.symbol.ui_motifs.map((motif, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="text-purple-500">▸</span>
+                        <span className="text-gray-700 text-sm">{motif}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-3">Color Palette</h4>
+                  <div className="space-y-2">
+                    {result.report.symbol.color_palette_suggestions.map((color, i) => (
+                      <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
+                        <div
+                          className="w-12 h-12 rounded-lg border-2 border-gray-300"
+                          style={{
+                            backgroundColor: color.match(/#[0-9A-Fa-f]{6}/)?.[0] || '#cccccc'
+                          }}
+                        />
+                        <p className="text-sm text-gray-700 flex-1">{color}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Session Meta */}
+            {result.report.totalDuration && (
+              <div className="bg-gray-50 rounded-xl p-4 text-center text-sm text-gray-600">
+                Session completed in {(result.report.totalDuration / 1000).toFixed(2)}s
+              </div>
             )}
+          </div>
+        )}
+
+        {/* Error Display */}
+        {result && !result.ok && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
+            <h3 className="text-lg font-semibold text-red-900 mb-2">Session Failed</h3>
+            <p className="text-red-700">{result.error || result.message}</p>
           </div>
         )}
 
