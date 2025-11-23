@@ -4,13 +4,24 @@
  */
 
 import { embedText } from './embed';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+// Lazy initialization - only create client when actually needed (not at build time)
+let supabaseClient: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient {
+  if (!supabaseClient) {
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!url || !key) {
+      throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables must be set');
+    }
+
+    supabaseClient = createClient(url, key);
+  }
+  return supabaseClient;
+}
 
 export interface SearchResult {
   id: number;
@@ -50,6 +61,7 @@ export async function searchKB(
     const { embedding } = await embedText(query);
 
     // Step 2: Call search_kb RPC function
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase.rpc('search_kb', {
       query_embedding: embedding,
       match_threshold: similarityThreshold,
@@ -124,6 +136,8 @@ export async function getKBStats(): Promise<{
   avgChunkSize: number;
 }> {
   try {
+    const supabase = getSupabaseClient();
+
     // Total chunks
     const { count: totalChunks } = await supabase
       .from('kb_chunks')

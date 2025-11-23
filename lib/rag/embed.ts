@@ -5,9 +5,19 @@
 
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization - only create client when actually needed (not at build time)
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY environment variable is not set');
+    }
+    openaiClient = new OpenAI({ apiKey });
+  }
+  return openaiClient;
+}
 
 export interface EmbeddingResult {
   embedding: number[];
@@ -30,6 +40,7 @@ export async function embedText(
 
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
+      const openai = getOpenAIClient();
       const response = await openai.embeddings.create({
         model: model,
         input: text,
@@ -77,6 +88,7 @@ export async function embedTextBatch(
     const batch = texts.slice(i, i + batchSize);
 
     try {
+      const openai = getOpenAIClient();
       const response = await openai.embeddings.create({
         model: 'text-embedding-3-small',
         input: batch,
