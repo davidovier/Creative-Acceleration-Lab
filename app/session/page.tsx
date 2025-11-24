@@ -35,12 +35,17 @@ interface PrototypeOutput {
   risks: string[];
 }
 
+interface ColorEmotion {
+  color: string;
+  meaning: string;
+}
+
 interface SymbolOutput {
   primary_symbol: string;
   secondary_symbols: string[];
   conceptual_motifs: string[];
   ui_motifs: string[];
-  color_palette_suggestions: string[];
+  color_palette_suggestions: ColorEmotion[];
 }
 
 interface SessionReport {
@@ -54,6 +59,11 @@ interface SessionReport {
   consistency?: {
     score: number;
     notes: string[];
+  };
+  preprocessing?: {
+    extractedQuotes: string[];
+    pronoun: string;
+    keywords: string[];
   };
 }
 
@@ -169,6 +179,55 @@ export default function SessionPage() {
         {/* Results Section */}
         {result && result.ok && result.report && (
           <div className="space-y-8">
+            {/* Preprocessing Section (Prompt 7) */}
+            {result.report.preprocessing && (
+              <details className="bg-gradient-to-r from-slate-50 to-gray-100 rounded-xl border-2 border-gray-200">
+                <summary className="cursor-pointer p-4 font-semibold text-gray-700 hover:text-gray-900 flex items-center gap-2">
+                  <span className="text-lg">🔬</span>
+                  <span>Preprocessing Data (Click to expand)</span>
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full ml-auto">
+                    Prompt 7
+                  </span>
+                </summary>
+                <div className="p-6 border-t border-gray-200 space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-gray-800 mb-2">Detected Pronoun</h4>
+                    <p className="text-sm text-gray-600 bg-white rounded px-3 py-2 inline-block">
+                      {result.report.preprocessing.pronoun}
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-gray-800 mb-2">
+                      Shared Keywords ({result.report.preprocessing.keywords.length})
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {result.report.preprocessing.keywords.map((kw, i) => (
+                        <span key={i} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {result.report.preprocessing.extractedQuotes.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold text-gray-800 mb-2">
+                        Extracted Quotes ({result.report.preprocessing.extractedQuotes.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {result.report.preprocessing.extractedQuotes.map((quote, i) => (
+                          <div key={i} className="bg-white border-l-4 border-purple-400 pl-3 py-2 rounded-r">
+                            <p className="text-sm text-gray-700">"{quote}"</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </details>
+            )}
+
             {/* Insight Section */}
             <div className="bg-white rounded-2xl shadow-xl p-8">
               <div className="flex items-center gap-3 mb-6">
@@ -379,17 +438,21 @@ export default function SessionPage() {
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-gray-800 mb-3">Color Palette</h4>
+                  <h4 className="font-semibold text-gray-800 mb-3">Color Palette (Emotionally Mapped)</h4>
                   <div className="space-y-2">
-                    {result.report.symbol.color_palette_suggestions.map((color, i) => (
+                    {result.report.symbol.color_palette_suggestions.map((colorEmotion, i) => (
                       <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-lg p-3">
                         <div
-                          className="w-12 h-12 rounded-lg border-2 border-gray-300"
+                          className="w-12 h-12 rounded-lg border-2 border-gray-300 flex-shrink-0"
                           style={{
-                            backgroundColor: color.match(/#[0-9A-Fa-f]{6}/)?.[0] || '#cccccc'
+                            backgroundColor: colorEmotion.color
                           }}
+                          title={colorEmotion.color}
                         />
-                        <p className="text-sm text-gray-700 flex-1">{color}</p>
+                        <div className="flex-1">
+                          <p className="text-xs font-mono text-gray-500">{colorEmotion.color}</p>
+                          <p className="text-sm text-gray-700 italic">{colorEmotion.meaning}</p>
+                        </div>
                       </div>
                     ))}
                   </div>

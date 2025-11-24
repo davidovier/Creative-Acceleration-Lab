@@ -1,6 +1,6 @@
 /**
- * Agent Orchestrator
- * Sequential execution of all four agents
+ * Agent Orchestrator (Prompt 7: Enhanced with preprocessing & refinement)
+ * Sequential execution of all four agents with shared vocabulary and symbolic linkage
  */
 
 import { runInsightAgent } from './insight';
@@ -10,25 +10,34 @@ import { runSymbolAgent } from './symbol';
 import { SessionReport } from './types';
 import { ENABLE_AGENT_DEBUG_LOGS } from './config';
 import { computeSessionConsistency, getConsistencyRating } from './consistency';
+import { preprocessUserInput } from './preprocess';
+import { extractKeywords } from './vocabulary';
+import { mapColorsToEmotion } from './colorLogic';
+import { refinePrototypeWithSymbols } from './refinePrototype';
 
 /**
- * Run full session with all four agents sequentially
+ * Run full session with all four agents sequentially (Prompt 7)
  *
  * Execution flow:
- * 1. Insight Agent - Emotional and archetypal analysis
- * 2. Story Agent - Narrative structure (uses Insight output)
- * 3. Prototype Agent - 5-day sprint plan (uses Insight + Story)
- * 4. Symbol Agent - Visual symbols (uses all previous outputs)
+ * 0. Preprocessing - Extract quotes, pronoun, clean text
+ * 1. Insight Agent - Emotional and archetypal analysis (quote-aware)
+ * 2. Vocabulary Extraction - Shared keywords for cross-agent coherence
+ * 3. Story Agent - Narrative structure (keyword & pronoun-aware)
+ * 4. Prototype Agent - 5-day sprint plan (keyword-aware)
+ * 5. Symbol Agent - Visual symbols (keyword & pronoun-aware)
+ * 6. Color Mapping - Transform palette with emotional meanings
+ * 7. Refinement - Weave symbolic language into prototype tasks
+ * 8. Consistency Check - Validate cross-agent alignment
  *
  * @param userText - User's input text describing their creative challenge
- * @returns Complete session report with all agent outputs
+ * @returns Complete session report with all agent outputs and preprocessing data
  */
 export async function runFullSession(userText: string): Promise<SessionReport> {
   const startTime = Date.now();
 
   // Enhanced session header
   console.log('\n' + '═'.repeat(60));
-  console.log('🎨  CREATIVE ACCELERATION SESSION');
+  console.log('🎨  CREATIVE ACCELERATION SESSION (Prompt 7)');
   console.log('═'.repeat(60));
   console.log(`📝 Input: ${userText.length} chars`);
   if (ENABLE_AGENT_DEBUG_LOGS) {
@@ -38,23 +47,51 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
   console.log('');
 
   try {
-    // Step 1: Insight Agent
-    console.log('🔮 [1/5] Insight Agent — Mapping emotional terrain...');
+    // Step 0: Preprocessing
+    console.log('🔬 [0/8] Preprocessing — Extracting quotes, pronoun, cleaning text...');
+    const preprocessStart = Date.now();
+    const { extractedQuotes, pronoun, cleanedText } = preprocessUserInput(userText);
+    const preprocessDuration = Date.now() - preprocessStart;
+    console.log(`   ✓ Complete (${(preprocessDuration / 1000).toFixed(2)}s)`);
+    console.log(`   → Quotes extracted: ${extractedQuotes.length}`);
+    console.log(`   → Pronoun detected: ${pronoun}`);
+    if (ENABLE_AGENT_DEBUG_LOGS) {
+      console.log(`   → Cleaned text length: ${cleanedText.length} chars`);
+      if (extractedQuotes.length > 0) {
+        console.log(`   → First quote: "${extractedQuotes[0].slice(0, 50)}..."`);
+      }
+    }
+    console.log('');
+
+    // Step 1: Insight Agent (quote-aware)
+    console.log('🔮 [1/8] Insight Agent — Mapping emotional terrain...');
     const insightStart = Date.now();
-    const insight = await runInsightAgent(userText);
+    const insight = await runInsightAgent(cleanedText, extractedQuotes);
     const insightDuration = Date.now() - insightStart;
     console.log(`   ✓ Complete (${(insightDuration / 1000).toFixed(2)}s)`);
     console.log(`   → Archetype: ${insight.archetype_guess}`);
     console.log(`   → Core wound: ${insight.core_wound.slice(0, 50)}...`);
     if (ENABLE_AGENT_DEBUG_LOGS) {
-      console.log(`   → Quotes retrieved: ${insight.supporting_quotes.length}`);
+      console.log(`   → Supporting quotes: ${insight.supporting_quotes.length}`);
     }
     console.log('');
 
-    // Step 2: Story Agent
-    console.log('📖 [2/5] Story Agent — Crafting micro-myth...');
+    // Step 2: Extract shared vocabulary
+    console.log('📚 [2/8] Vocabulary Extraction — Building shared lexicon...');
+    const vocabStart = Date.now();
+    const keywords = extractKeywords(insight);
+    const vocabDuration = Date.now() - vocabStart;
+    console.log(`   ✓ Complete (${(vocabDuration / 1000).toFixed(2)}s)`);
+    console.log(`   → Keywords: ${keywords.join(', ')}`);
+    if (ENABLE_AGENT_DEBUG_LOGS) {
+      console.log(`   → Count: ${keywords.length}`);
+    }
+    console.log('');
+
+    // Step 3: Story Agent (keyword & pronoun-aware)
+    console.log('📖 [3/8] Story Agent — Crafting micro-myth...');
     const storyStart = Date.now();
-    const story = await runStoryAgent(userText, insight);
+    const story = await runStoryAgent(cleanedText, insight, keywords, pronoun);
     const storyDuration = Date.now() - storyStart;
     console.log(`   ✓ Complete (${(storyDuration / 1000).toFixed(2)}s)`);
     console.log(`   → Current: ${story.current_chapter.slice(0, 55)}...`);
@@ -64,34 +101,71 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     }
     console.log('');
 
-    // Step 3: Prototype Agent
-    console.log('⚡ [3/5] Prototype Agent — Designing acceleration sprint...');
+    // Step 4: Prototype Agent (keyword-aware)
+    console.log('⚡ [4/8] Prototype Agent — Designing acceleration sprint...');
     const prototypeStart = Date.now();
-    const prototype = await runPrototypeAgent(userText, insight, story);
+    const initialPrototype = await runPrototypeAgent(cleanedText, insight, story, keywords);
     const prototypeDuration = Date.now() - prototypeStart;
     console.log(`   ✓ Complete (${(prototypeDuration / 1000).toFixed(2)}s)`);
-    console.log(`   → Goal: ${prototype.goal.slice(0, 60)}...`);
-    console.log(`   → Days planned: ${prototype.day_by_day_plan.length}`);
-    console.log(`   → Constraints: ${prototype.constraints.length}`);
+    console.log(`   → Goal: ${initialPrototype.goal.slice(0, 60)}...`);
+    console.log(`   → Days planned: ${initialPrototype.day_by_day_plan.length}`);
+    console.log(`   → Constraints: ${initialPrototype.constraints.length}`);
     if (ENABLE_AGENT_DEBUG_LOGS) {
-      console.log(`   → AI features: ${prototype.potential_ai_features.length}`);
-      console.log(`   → Risks identified: ${prototype.risks.length}`);
+      console.log(`   → AI features: ${initialPrototype.potential_ai_features.length}`);
+      console.log(`   → Risks identified: ${initialPrototype.risks.length}`);
     }
     console.log('');
 
-    // Step 4: Symbol Agent
-    console.log('✨ [4/5] Symbol Agent — Distilling visual language...');
+    // Step 5: Symbol Agent (keyword & pronoun-aware)
+    console.log('✨ [5/8] Symbol Agent — Distilling visual language...');
     const symbolStart = Date.now();
-    const symbol = await runSymbolAgent(userText, insight, story, prototype);
+    const rawSymbol = await runSymbolAgent(cleanedText, insight, story, initialPrototype, keywords, pronoun);
     const symbolDuration = Date.now() - symbolStart;
     console.log(`   ✓ Complete (${(symbolDuration / 1000).toFixed(2)}s)`);
-    console.log(`   → Primary: ${symbol.primary_symbol.slice(0, 55)}...`);
-    console.log(`   → Motifs: ${symbol.secondary_symbols.length} + ${symbol.conceptual_motifs.length}`);
-    console.log(`   → Colors: ${symbol.color_palette_suggestions.length}`);
+    console.log(`   → Primary: ${rawSymbol.primary_symbol.slice(0, 55)}...`);
+    console.log(`   → Motifs: ${rawSymbol.secondary_symbols.length} + ${rawSymbol.conceptual_motifs.length}`);
+    console.log(`   → Colors: ${rawSymbol.color_palette_suggestions.length}`);
     console.log('');
 
-    // Step 5: Compute consistency score
-    console.log('🔗 [5/5] Consistency Check — Validating cross-agent alignment...');
+    // Step 6: Color Mapping
+    console.log('🎨 [6/8] Color Mapping — Associating emotions with palette...');
+    const colorStart = Date.now();
+    const colorEmotions = mapColorsToEmotion(
+      rawSymbol.color_palette_suggestions.map(c => typeof c === 'string' ? c : c.color),
+      insight
+    );
+    const symbol = {
+      ...rawSymbol,
+      color_palette_suggestions: colorEmotions,
+    };
+    const colorDuration = Date.now() - colorStart;
+    console.log(`   ✓ Complete (${(colorDuration / 1000).toFixed(2)}s)`);
+    console.log(`   → Emotions mapped: ${colorEmotions.length}`);
+    if (ENABLE_AGENT_DEBUG_LOGS && colorEmotions.length > 0) {
+      console.log(`   → First: ${colorEmotions[0].color} — ${colorEmotions[0].meaning.slice(0, 40)}...`);
+    }
+    console.log('');
+
+    // Step 7: Refine Prototype with Symbolic Language
+    console.log('🔗 [7/8] Prototype Refinement — Weaving symbolic language...');
+    const refineStart = Date.now();
+    const prototype = await refinePrototypeWithSymbols({
+      userText: cleanedText,
+      insight,
+      story,
+      prototype: initialPrototype,
+      symbol,
+    });
+    const refineDuration = Date.now() - refineStart;
+    console.log(`   ✓ Complete (${(refineDuration / 1000).toFixed(2)}s)`);
+    console.log(`   → Tasks refined with symbolic imagery`);
+    if (ENABLE_AGENT_DEBUG_LOGS) {
+      console.log(`   → Refined goal: ${prototype.goal.slice(0, 50)}...`);
+    }
+    console.log('');
+
+    // Step 8: Compute consistency score
+    console.log('🔍 [8/8] Consistency Check — Validating cross-agent alignment...');
     const consistencyStart = Date.now();
     const consistency = computeSessionConsistency(insight, story, prototype, symbol);
     const consistencyDuration = Date.now() - consistencyStart;
@@ -102,7 +176,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     }
     console.log('');
 
-    // Build final report
+    // Build final report with preprocessing data
     const totalDuration = Date.now() - startTime;
     const report: SessionReport = {
       userText,
@@ -113,6 +187,11 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
       symbol,
       totalDuration,
       consistency,
+      preprocessing: {
+        extractedQuotes,
+        pronoun,
+        keywords,
+      },
     };
 
     // Enhanced completion summary
@@ -121,10 +200,14 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     console.log('═'.repeat(60));
     console.log(`⏱️  Total: ${(totalDuration / 1000).toFixed(2)}s`);
     console.log(`📊 Breakdown:`);
-    console.log(`   • Insight:   ${(insightDuration / 1000).toFixed(2)}s (${((insightDuration / totalDuration) * 100).toFixed(0)}%)`);
-    console.log(`   • Story:     ${(storyDuration / 1000).toFixed(2)}s (${((storyDuration / totalDuration) * 100).toFixed(0)}%)`);
-    console.log(`   • Prototype: ${(prototypeDuration / 1000).toFixed(2)}s (${((prototypeDuration / totalDuration) * 100).toFixed(0)}%)`);
-    console.log(`   • Symbol:    ${(symbolDuration / 1000).toFixed(2)}s (${((symbolDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log(`   • Preprocess: ${(preprocessDuration / 1000).toFixed(2)}s (${((preprocessDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log(`   • Vocabulary: ${(vocabDuration / 1000).toFixed(2)}s (${((vocabDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log(`   • Insight:    ${(insightDuration / 1000).toFixed(2)}s (${((insightDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log(`   • Story:      ${(storyDuration / 1000).toFixed(2)}s (${((storyDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log(`   • Prototype:  ${(prototypeDuration / 1000).toFixed(2)}s (${((prototypeDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log(`   • Symbol:     ${(symbolDuration / 1000).toFixed(2)}s (${((symbolDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log(`   • ColorMap:   ${(colorDuration / 1000).toFixed(2)}s (${((colorDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log(`   • Refinement: ${(refineDuration / 1000).toFixed(2)}s (${((refineDuration / totalDuration) * 100).toFixed(0)}%)`);
     console.log(`🎯 Coherence: ${consistency.score}/100 (${getConsistencyRating(consistency.score)})`);
     console.log('═'.repeat(60) + '\n');
 

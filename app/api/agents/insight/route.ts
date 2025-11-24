@@ -1,10 +1,11 @@
 /**
- * Insight Agent API Route
+ * Insight Agent API Route (Prompt 7: quote-aware)
  * For debugging and testing the Insight agent individually
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { runInsightAgent } from '@/lib/agents/insight';
+import { preprocessUserInput } from '@/lib/agents/preprocess';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -51,13 +52,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Preprocess user input
+    const { extractedQuotes, cleanedText } = preprocessUserInput(userText);
+
     // Run agent
-    console.log(`[API] Running Insight agent (${userText.length} chars)`);
-    const result = await runInsightAgent(userText);
+    console.log(`[API] Running Insight agent (${userText.length} chars, ${extractedQuotes.length} quotes)`);
+    const result = await runInsightAgent(cleanedText, extractedQuotes);
 
     return NextResponse.json({
       ok: true,
       result,
+      preprocessing: {
+        extractedQuotes,
+        quotesCount: extractedQuotes.length,
+      },
     });
 
   } catch (error: any) {

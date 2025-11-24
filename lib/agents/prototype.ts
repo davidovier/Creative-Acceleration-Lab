@@ -15,19 +15,21 @@ import {
 import { buildPrototypeSystemPrompt, formatInsightForPrompt, formatStoryForPrompt } from './prompts';
 
 /**
- * Prototype Engineer Agent
+ * Prototype Engineer Agent (Prompt 7: keyword-aware)
  * Creates actionable 5-day prototype plan
  */
 export async function runPrototypeAgent(
   userText: string,
   insight: InsightOutput,
-  story: StoryOutput
+  story: StoryOutput,
+  keywords: string[]
 ): Promise<PrototypeOutput> {
   const startTime = Date.now();
   console.log('[Prototype Agent] Building sprint plan...');
   debugLog('PrototypeAgent', 'Input', {
     userTextLength: userText.length,
     desiredChapter: story.desired_chapter.slice(0, 50),
+    keywords: keywords.length,
   });
 
   try {
@@ -46,10 +48,10 @@ export async function runPrototypeAgent(
       contextLength: kbContext.length,
     });
 
-    // Step 2: Build system prompt using prompt builder
+    // Step 2: Build system prompt using prompt builder with keywords
     const insightJson = formatInsightForPrompt(insight);
     const storyJson = formatStoryForPrompt(story);
-    const systemPrompt = buildPrototypeSystemPrompt(kbContext, insightJson, storyJson);
+    const systemPrompt = buildPrototypeSystemPrompt(kbContext, insightJson, storyJson, keywords);
 
     // Step 3: Call Claude with fallback
     const fallbackObject: PrototypeOutput = {

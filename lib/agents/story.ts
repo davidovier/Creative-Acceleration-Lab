@@ -15,18 +15,22 @@ import {
 import { buildStorySystemPrompt, formatInsightForPrompt } from './prompts';
 
 /**
- * Story Architect Agent
+ * Story Architect Agent (Prompt 7: keyword & pronoun-aware)
  * Transforms user's challenge into a hero's journey narrative
  */
 export async function runStoryAgent(
   userText: string,
-  insight: InsightOutput
+  insight: InsightOutput,
+  keywords: string[],
+  pronoun: string
 ): Promise<StoryOutput> {
   const startTime = Date.now();
   console.log('[Story Agent] Crafting narrative...');
   debugLog('StoryAgent', 'Input', {
     userTextLength: userText.length,
     archetype: insight.archetype_guess,
+    keywords: keywords.length,
+    pronoun,
   });
 
   try {
@@ -45,9 +49,9 @@ export async function runStoryAgent(
       contextLength: kbContext.length,
     });
 
-    // Step 2: Build system prompt using prompt builder
+    // Step 2: Build system prompt using prompt builder with keywords & pronoun
     const insightJson = formatInsightForPrompt(insight);
-    const systemPrompt = buildStorySystemPrompt(kbContext, insightJson);
+    const systemPrompt = buildStorySystemPrompt(kbContext, insightJson, keywords, pronoun);
 
     // Step 3: Call Claude with fallback
     const fallbackObject: StoryOutput = {

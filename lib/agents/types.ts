@@ -48,6 +48,15 @@ export interface PrototypeOutput {
 }
 
 /**
+ * Color-Emotion Mapping (Prompt 7)
+ * Associates colors with emotional meanings
+ */
+export interface ColorEmotion {
+  color: string;
+  meaning: string;
+}
+
+/**
  * Symbol Weaver Output
  * Visual symbols and design elements (NO tattoo references)
  */
@@ -56,7 +65,7 @@ export interface SymbolOutput {
   secondary_symbols: string[];
   conceptual_motifs: string[]; // Replaced tattoo_concepts - symbolic objects, rituals, metaphors
   ui_motifs: string[];
-  color_palette_suggestions: string[];
+  color_palette_suggestions: ColorEmotion[]; // Changed from string[] to ColorEmotion[] in Prompt 7
 }
 
 // ============================================================================
@@ -78,6 +87,11 @@ export interface SessionReport {
   consistency?: {
     score: number;
     notes: string[];
+  };
+  preprocessing?: {
+    extractedQuotes: string[];
+    pronoun: string;
+    keywords: string[];
   };
 }
 

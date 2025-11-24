@@ -15,13 +15,19 @@ import {
 import { buildInsightSystemPrompt } from './prompts';
 
 /**
- * Insight Agent
+ * Insight Agent (Prompt 7: quote-aware)
  * Analyzes user's creative challenge through emotional and archetypal lens
  */
-export async function runInsightAgent(userText: string): Promise<InsightOutput> {
+export async function runInsightAgent(
+  userText: string,
+  extractedQuotes: string[]
+): Promise<InsightOutput> {
   const startTime = Date.now();
   console.log('[Insight Agent] Starting analysis...');
-  debugLog('InsightAgent', 'Input length', { chars: userText.length });
+  debugLog('InsightAgent', 'Input', {
+    chars: userText.length,
+    quotes: extractedQuotes.length
+  });
 
   try {
     // Step 1: Search KB using agent-aware search
@@ -38,8 +44,8 @@ export async function runInsightAgent(userText: string): Promise<InsightOutput> 
       contextLength: kbContext.length,
     });
 
-    // Step 2: Build system prompt using prompt builder
-    const systemPrompt = buildInsightSystemPrompt(kbContext);
+    // Step 2: Build system prompt with extracted quotes
+    const systemPrompt = buildInsightSystemPrompt(kbContext, extractedQuotes);
 
     // Step 3: Call Claude with fallback
     const fallbackObject: InsightOutput = {

@@ -1,11 +1,13 @@
 /**
- * Story Agent API Route
+ * Story Agent API Route (Prompt 7: keyword & pronoun-aware)
  * For debugging and testing the Story agent individually
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { runStoryAgent } from '@/lib/agents/story';
 import { InsightOutput } from '@/lib/agents/types';
+import { extractKeywords } from '@/lib/agents/vocabulary';
+import { getPreferredPronoun } from '@/lib/agents/preprocess';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -57,13 +59,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Extract keywords and pronoun
+    const keywords = extractKeywords(insight as InsightOutput);
+    const pronoun = getPreferredPronoun(userText);
+
     // Run agent
-    console.log(`[API] Running Story agent (archetype: ${insight.archetype_guess})`);
-    const result = await runStoryAgent(userText, insight as InsightOutput);
+    console.log(`[API] Running Story agent (archetype: ${insight.archetype_guess}, pronoun: ${pronoun})`);
+    const result = await runStoryAgent(userText, insight as InsightOutput, keywords, pronoun);
 
     return NextResponse.json({
       ok: true,
       result,
+      preprocessing: {
+        keywords,
+        pronoun,
+      },
     });
 
   } catch (error: any) {

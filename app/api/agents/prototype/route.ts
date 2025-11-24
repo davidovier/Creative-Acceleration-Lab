@@ -1,11 +1,12 @@
 /**
- * Prototype Agent API Route
+ * Prototype Agent API Route (Prompt 7: keyword-aware)
  * For debugging and testing the Prototype agent individually
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { runPrototypeAgent } from '@/lib/agents/prototype';
 import { InsightOutput, StoryOutput } from '@/lib/agents/types';
+import { extractKeywords } from '@/lib/agents/vocabulary';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -54,17 +55,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Extract keywords
+    const keywords = extractKeywords(insight as InsightOutput);
+
     // Run agent
-    console.log(`[API] Running Prototype agent`);
+    console.log(`[API] Running Prototype agent (${keywords.length} keywords)`);
     const result = await runPrototypeAgent(
       userText,
       insight as InsightOutput,
-      story as StoryOutput
+      story as StoryOutput,
+      keywords
     );
 
     return NextResponse.json({
       ok: true,
       result,
+      preprocessing: {
+        keywords,
+      },
     });
 
   } catch (error: any) {
