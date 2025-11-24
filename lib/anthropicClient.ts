@@ -97,6 +97,60 @@ export async function callClaude<T = any>(
 }
 
 /**
+ * Call Claude with robust JSON parsing fallback
+ * If first attempt fails, retries with stricter prompt
+ * If second attempt fails, returns safe fallback object with error
+ */
+export async function callClaudeWithFallback<T = any>(
+  systemPrompt: string,
+  userMessage: string,
+  fallbackObject: T,
+  options: {
+    model?: string;
+    maxTokens?: number;
+    temperature?: number;
+  } = {}
+): Promise<T> {
+  try {
+    // First attempt - normal call
+    return await callClaude<T>(systemPrompt, userMessage, options);
+  } catch (firstError: any) {
+    // Log first attempt failure
+    console.warn('⚠️  First Claude call failed to parse JSON:', firstError.message);
+
+    // Check if it's a JSON parsing error
+    if (!firstError.message.includes('parse') && !firstError.message.includes('JSON')) {
+      // If it's not a parsing error (e.g., network issue), throw immediately
+      throw firstError;
+    }
+
+    try {
+      // Second attempt with stricter prompt
+      console.log('🔄 Retrying with stricter JSON-only prompt...');
+
+      const stricterSystemPrompt = `${systemPrompt}
+
+⚠️ CRITICAL: Your previous response could not be parsed as valid JSON.
+You MUST respond with ONLY valid JSON. No text outside the JSON object.
+No explanations. No commentary. No markdown. Just pure, valid JSON.`;
+
+      return await callClaude<T>(stricterSystemPrompt, userMessage, options);
+    } catch (secondError: any) {
+      // Both attempts failed - log and return fallback
+      console.error('❌ Second Claude call also failed. Using fallback object.');
+      console.error('Second error:', secondError.message);
+
+      // Return fallback object with error info
+      return {
+        ...fallbackObject,
+        error: 'Failed to parse valid JSON after 2 attempts',
+        raw_error: secondError.message,
+      } as T;
+    }
+  }
+}
+
+/**
  * Estimate cost for Claude API call
  * Based on Haiku pricing: $0.25/MTok input, $1.25/MTok output
  */

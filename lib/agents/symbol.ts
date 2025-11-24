@@ -4,7 +4,7 @@
  */
 
 import { searchKB } from '@/lib/rag/search';
-import { callClaude } from '@/lib/anthropicClient';
+import { callClaudeWithFallback } from '@/lib/anthropicClient';
 import { InsightOutput, StoryOutput, PrototypeOutput, SymbolOutput } from './types';
 import {
   AGENT_MODEL,
@@ -65,10 +65,19 @@ export async function runSymbolAgent(
     const prototypeJson = formatPrototypeForPrompt(prototype);
     const systemPrompt = buildSymbolSystemPrompt(kbContext, insightJson, storyJson, prototypeJson);
 
-    // Step 3: Call Claude with config values
-    const result = await callClaude<SymbolOutput>(
+    // Step 3: Call Claude with fallback
+    const fallbackObject: SymbolOutput = {
+      primary_symbol: 'Primary symbol unavailable due to parsing error.',
+      secondary_symbols: ['Unable to generate secondary symbols'],
+      conceptual_motifs: ['Conceptual motifs unavailable'],
+      ui_motifs: ['UI design suggestions unavailable'],
+      color_palette_suggestions: ['#808080 - Neutral gray (fallback)'],
+    };
+
+    const result = await callClaudeWithFallback<SymbolOutput>(
       systemPrompt,
       userText,
+      fallbackObject,
       {
         model: AGENT_MODEL,
         maxTokens: MAX_TOKENS_SYMBOL,
@@ -89,10 +98,6 @@ export async function runSymbolAgent(
   } catch (error: any) {
     const duration = Date.now() - startTime;
     console.error(`[Symbol Agent] Error after ${duration}ms:`, error.message);
-
-    if (error.message.includes('JSON')) {
-      throw new Error(`SymbolAgent: Failed to parse JSON response - ${error.message}`);
-    }
     throw new Error(`SymbolAgent: ${error.message}`);
   }
 }

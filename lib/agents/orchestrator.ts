@@ -8,6 +8,7 @@ import { runStoryAgent } from './story';
 import { runPrototypeAgent } from './prototype';
 import { runSymbolAgent } from './symbol';
 import { SessionReport } from './types';
+import { ENABLE_AGENT_DEBUG_LOGS } from './config';
 
 /**
  * Run full session with all four agents sequentially
@@ -24,47 +25,68 @@ import { SessionReport } from './types';
 export async function runFullSession(userText: string): Promise<SessionReport> {
   const startTime = Date.now();
 
-  console.log('='.repeat(60));
-  console.log('SESSION STARTED');
-  console.log('='.repeat(60));
-  console.log(`User text: ${userText.slice(0, 100)}...`);
+  // Enhanced session header
+  console.log('\n' + '═'.repeat(60));
+  console.log('🎨  CREATIVE ACCELERATION SESSION');
+  console.log('═'.repeat(60));
+  console.log(`📝 Input: ${userText.length} chars`);
+  if (ENABLE_AGENT_DEBUG_LOGS) {
+    console.log(`🔍 Debug mode: ENABLED`);
+    console.log(`📋 Preview: "${userText.slice(0, 120)}..."`);
+  }
   console.log('');
 
   try {
     // Step 1: Insight Agent
-    console.log('→ Running Insight Agent...');
+    console.log('🔮 [1/4] Insight Agent — Mapping emotional terrain...');
     const insightStart = Date.now();
     const insight = await runInsightAgent(userText);
     const insightDuration = Date.now() - insightStart;
-    console.log(`✓ Insight Agent complete (${insightDuration}ms)`);
-    console.log(`  Archetype: ${insight.archetype_guess}`);
+    console.log(`   ✓ Complete (${(insightDuration / 1000).toFixed(2)}s)`);
+    console.log(`   → Archetype: ${insight.archetype_guess}`);
+    console.log(`   → Core wound: ${insight.core_wound.slice(0, 50)}...`);
+    if (ENABLE_AGENT_DEBUG_LOGS) {
+      console.log(`   → Quotes retrieved: ${insight.supporting_quotes.length}`);
+    }
     console.log('');
 
     // Step 2: Story Agent
-    console.log('→ Running Story Agent...');
+    console.log('📖 [2/4] Story Agent — Crafting micro-myth...');
     const storyStart = Date.now();
     const story = await runStoryAgent(userText, insight);
     const storyDuration = Date.now() - storyStart;
-    console.log(`✓ Story Agent complete (${storyDuration}ms)`);
-    console.log(`  Current: ${story.current_chapter.slice(0, 60)}...`);
+    console.log(`   ✓ Complete (${(storyDuration / 1000).toFixed(2)}s)`);
+    console.log(`   → Current: ${story.current_chapter.slice(0, 55)}...`);
+    console.log(`   → Desired: ${story.desired_chapter.slice(0, 55)}...`);
+    if (ENABLE_AGENT_DEBUG_LOGS) {
+      console.log(`   → Story length: ${story.story_paragraph.length} chars`);
+    }
     console.log('');
 
     // Step 3: Prototype Agent
-    console.log('→ Running Prototype Agent...');
+    console.log('⚡ [3/4] Prototype Agent — Designing acceleration sprint...');
     const prototypeStart = Date.now();
     const prototype = await runPrototypeAgent(userText, insight, story);
     const prototypeDuration = Date.now() - prototypeStart;
-    console.log(`✓ Prototype Agent complete (${prototypeDuration}ms)`);
-    console.log(`  Goal: ${prototype.goal.slice(0, 60)}...`);
+    console.log(`   ✓ Complete (${(prototypeDuration / 1000).toFixed(2)}s)`);
+    console.log(`   → Goal: ${prototype.goal.slice(0, 60)}...`);
+    console.log(`   → Days planned: ${prototype.day_by_day_plan.length}`);
+    console.log(`   → Constraints: ${prototype.constraints.length}`);
+    if (ENABLE_AGENT_DEBUG_LOGS) {
+      console.log(`   → AI features: ${prototype.potential_ai_features.length}`);
+      console.log(`   → Risks identified: ${prototype.risks.length}`);
+    }
     console.log('');
 
     // Step 4: Symbol Agent
-    console.log('→ Running Symbol Agent...');
+    console.log('✨ [4/4] Symbol Agent — Distilling visual language...');
     const symbolStart = Date.now();
     const symbol = await runSymbolAgent(userText, insight, story, prototype);
     const symbolDuration = Date.now() - symbolStart;
-    console.log(`✓ Symbol Agent complete (${symbolDuration}ms)`);
-    console.log(`  Primary symbol: ${symbol.primary_symbol.slice(0, 60)}...`);
+    console.log(`   ✓ Complete (${(symbolDuration / 1000).toFixed(2)}s)`);
+    console.log(`   → Primary: ${symbol.primary_symbol.slice(0, 55)}...`);
+    console.log(`   → Motifs: ${symbol.secondary_symbols.length} + ${symbol.conceptual_motifs.length}`);
+    console.log(`   → Colors: ${symbol.color_palette_suggestions.length}`);
     console.log('');
 
     // Build final report
@@ -79,27 +101,32 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
       totalDuration,
     };
 
-    console.log('='.repeat(60));
-    console.log('SESSION COMPLETE');
-    console.log('='.repeat(60));
-    console.log(`Total duration: ${totalDuration}ms`);
-    console.log(`Breakdown:`);
-    console.log(`  - Insight: ${insightDuration}ms`);
-    console.log(`  - Story: ${storyDuration}ms`);
-    console.log(`  - Prototype: ${prototypeDuration}ms`);
-    console.log(`  - Symbol: ${symbolDuration}ms`);
-    console.log('');
+    // Enhanced completion summary
+    console.log('═'.repeat(60));
+    console.log('✅  SESSION COMPLETE');
+    console.log('═'.repeat(60));
+    console.log(`⏱️  Total: ${(totalDuration / 1000).toFixed(2)}s`);
+    console.log(`📊 Breakdown:`);
+    console.log(`   • Insight:   ${(insightDuration / 1000).toFixed(2)}s (${((insightDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log(`   • Story:     ${(storyDuration / 1000).toFixed(2)}s (${((storyDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log(`   • Prototype: ${(prototypeDuration / 1000).toFixed(2)}s (${((prototypeDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log(`   • Symbol:    ${(symbolDuration / 1000).toFixed(2)}s (${((symbolDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log('═'.repeat(60) + '\n');
 
     return report;
 
   } catch (error: any) {
     const totalDuration = Date.now() - startTime;
-    console.error('='.repeat(60));
-    console.error('SESSION FAILED');
-    console.error('='.repeat(60));
-    console.error(`Error: ${error.message}`);
-    console.error(`Duration before failure: ${totalDuration}ms`);
-    console.error('');
+    console.error('\n' + '═'.repeat(60));
+    console.error('❌  SESSION FAILED');
+    console.error('═'.repeat(60));
+    console.error(`💥 Error: ${error.message}`);
+    console.error(`⏱️  Duration before failure: ${(totalDuration / 1000).toFixed(2)}s`);
+    if (ENABLE_AGENT_DEBUG_LOGS && error.stack) {
+      console.error(`🔍 Stack trace:`);
+      console.error(error.stack);
+    }
+    console.error('═'.repeat(60) + '\n');
 
     throw error;
   }

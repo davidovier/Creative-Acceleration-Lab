@@ -4,7 +4,7 @@
  */
 
 import { searchKB } from '@/lib/rag/search';
-import { callClaude } from '@/lib/anthropicClient';
+import { callClaudeWithFallback } from '@/lib/anthropicClient';
 import { InsightOutput, StoryOutput, PrototypeOutput } from './types';
 import {
   AGENT_MODEL,
@@ -63,10 +63,25 @@ export async function runPrototypeAgent(
     const storyJson = formatStoryForPrompt(story);
     const systemPrompt = buildPrototypeSystemPrompt(kbContext, insightJson, storyJson);
 
-    // Step 3: Call Claude with config values
-    const result = await callClaude<PrototypeOutput>(
+    // Step 3: Call Claude with fallback
+    const fallbackObject: PrototypeOutput = {
+      goal: 'Sprint plan unavailable due to parsing error.',
+      constraints: ['Unable to generate constraints'],
+      day_by_day_plan: [
+        {
+          day: 1,
+          focus: 'Plan unavailable',
+          tasks: ['Unable to generate tasks due to technical error'],
+        },
+      ],
+      potential_ai_features: ['Unable to generate AI feature suggestions'],
+      risks: ['Technical error occurred during plan generation'],
+    };
+
+    const result = await callClaudeWithFallback<PrototypeOutput>(
       systemPrompt,
       userText,
+      fallbackObject,
       {
         model: AGENT_MODEL,
         maxTokens: MAX_TOKENS_PROTOTYPE,
@@ -87,10 +102,6 @@ export async function runPrototypeAgent(
   } catch (error: any) {
     const duration = Date.now() - startTime;
     console.error(`[Prototype Agent] Error after ${duration}ms:`, error.message);
-
-    if (error.message.includes('JSON')) {
-      throw new Error(`PrototypeAgent: Failed to parse JSON response - ${error.message}`);
-    }
     throw new Error(`PrototypeAgent: ${error.message}`);
   }
 }

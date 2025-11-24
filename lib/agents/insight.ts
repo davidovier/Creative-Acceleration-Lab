@@ -4,7 +4,7 @@
  */
 
 import { searchKB } from '@/lib/rag/search';
-import { callClaude } from '@/lib/anthropicClient';
+import { callClaudeWithFallback } from '@/lib/anthropicClient';
 import { InsightOutput } from './types';
 import {
   AGENT_MODEL,
@@ -54,10 +54,19 @@ export async function runInsightAgent(userText: string): Promise<InsightOutput> 
     // Step 2: Build system prompt using prompt builder
     const systemPrompt = buildInsightSystemPrompt(kbContext);
 
-    // Step 3: Call Claude with config values
-    const result = await callClaude<InsightOutput>(
+    // Step 3: Call Claude with fallback
+    const fallbackObject: InsightOutput = {
+      emotional_summary: 'Unable to analyze emotional state due to parsing error.',
+      core_wound: 'Analysis unavailable',
+      core_desire: 'Analysis unavailable',
+      archetype_guess: 'Unknown',
+      supporting_quotes: [],
+    };
+
+    const result = await callClaudeWithFallback<InsightOutput>(
       systemPrompt,
       userText,
+      fallbackObject,
       {
         model: AGENT_MODEL,
         maxTokens: MAX_TOKENS_INSIGHT,
@@ -78,11 +87,6 @@ export async function runInsightAgent(userText: string): Promise<InsightOutput> 
   } catch (error: any) {
     const duration = Date.now() - startTime;
     console.error(`[Insight Agent] Error after ${duration}ms:`, error.message);
-
-    // Enhanced error with context
-    if (error.message.includes('JSON')) {
-      throw new Error(`InsightAgent: Failed to parse JSON response - ${error.message}`);
-    }
     throw new Error(`InsightAgent: ${error.message}`);
   }
 }

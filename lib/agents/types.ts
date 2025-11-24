@@ -49,12 +49,12 @@ export interface PrototypeOutput {
 
 /**
  * Symbol Weaver Output
- * Visual symbols and design elements
+ * Visual symbols and design elements (NO tattoo references)
  */
 export interface SymbolOutput {
   primary_symbol: string;
   secondary_symbols: string[];
-  tattoo_concepts: string[];
+  conceptual_motifs: string[]; // Replaced tattoo_concepts - symbolic objects, rituals, metaphors
   ui_motifs: string[];
   color_palette_suggestions: string[];
 }

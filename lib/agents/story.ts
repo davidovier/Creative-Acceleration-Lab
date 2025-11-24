@@ -4,7 +4,7 @@
  */
 
 import { searchKB } from '@/lib/rag/search';
-import { callClaude } from '@/lib/anthropicClient';
+import { callClaudeWithFallback } from '@/lib/anthropicClient';
 import { InsightOutput, StoryOutput } from './types';
 import {
   AGENT_MODEL,
@@ -61,10 +61,19 @@ export async function runStoryAgent(
     const insightJson = formatInsightForPrompt(insight);
     const systemPrompt = buildStorySystemPrompt(kbContext, insightJson);
 
-    // Step 3: Call Claude with config values
-    const result = await callClaude<StoryOutput>(
+    // Step 3: Call Claude with fallback
+    const fallbackObject: StoryOutput = {
+      hero_description: 'Hero analysis unavailable due to parsing error.',
+      villain_description: 'Villain analysis unavailable.',
+      current_chapter: 'Current state unavailable.',
+      desired_chapter: 'Desired state unavailable.',
+      story_paragraph: 'Narrative unavailable due to technical error.',
+    };
+
+    const result = await callClaudeWithFallback<StoryOutput>(
       systemPrompt,
       userText,
+      fallbackObject,
       {
         model: AGENT_MODEL,
         maxTokens: MAX_TOKENS_STORY,
@@ -84,10 +93,6 @@ export async function runStoryAgent(
   } catch (error: any) {
     const duration = Date.now() - startTime;
     console.error(`[Story Agent] Error after ${duration}ms:`, error.message);
-
-    if (error.message.includes('JSON')) {
-      throw new Error(`StoryAgent: Failed to parse JSON response - ${error.message}`);
-    }
     throw new Error(`StoryAgent: ${error.message}`);
   }
 }

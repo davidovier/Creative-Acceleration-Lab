@@ -38,7 +38,7 @@ interface PrototypeOutput {
 interface SymbolOutput {
   primary_symbol: string;
   secondary_symbols: string[];
-  tattoo_concepts: string[];
+  conceptual_motifs: string[];
   ui_motifs: string[];
   color_palette_suggestions: string[];
 }
@@ -352,9 +352,9 @@ export default function SessionPage() {
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-gray-800 mb-3">Tattoo Concepts</h4>
+                  <h4 className="font-semibold text-gray-800 mb-3">Conceptual Motifs</h4>
                   <div className="space-y-2">
-                    {result.report.symbol.tattoo_concepts.map((concept, i) => (
+                    {result.report.symbol.conceptual_motifs.map((concept, i) => (
                       <div key={i} className="border-l-4 border-pink-400 pl-4 py-2 bg-pink-50 rounded-r-lg">
                         <p className="text-sm text-gray-700">{concept}</p>
                       </div>
