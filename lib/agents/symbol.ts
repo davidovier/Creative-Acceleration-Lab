@@ -3,15 +3,13 @@
  * Visual symbols and design elements
  */
 
-import { searchKB } from '@/lib/rag/search';
+import { searchKbForAgent, formatSearchResultsForPrompt } from '@/lib/rag/search';
 import { callClaudeWithFallback } from '@/lib/anthropicClient';
 import { InsightOutput, StoryOutput, PrototypeOutput, SymbolOutput } from './types';
 import {
   AGENT_MODEL,
   AGENT_TEMPERATURE,
   MAX_TOKENS_SYMBOL,
-  RAG_TOP_K,
-  RAG_SIMILARITY_THRESHOLD,
   debugLog,
 } from './config';
 import { buildSymbolSystemPrompt, formatInsightForPrompt, formatStoryForPrompt, formatPrototypeForPrompt } from './prompts';
@@ -34,25 +32,15 @@ export async function runSymbolAgent(
   });
 
   try {
-    // Step 1: Search KB for symbolic and visual design patterns
-    const kbQuery = `symbolic mapping visual design UI aesthetics color palette tattoo symbolism ${insight.archetype_guess} ${story.hero_description}`;
-
-    const searchResults = await searchKB(kbQuery, {
-      k: RAG_TOP_K,
-      similarityThreshold: RAG_SIMILARITY_THRESHOLD,
+    // Step 1: Search KB using agent-aware search
+    const searchResults = await searchKbForAgent({
+      agent: 'symbol',
+      userText,
+      extraHints: [insight.archetype_guess, story.hero_description.slice(0, 50)],
     });
 
     // Format KB context
-    const kbContext = searchResults.length > 0
-      ? searchResults
-          .map((r, i) => {
-            const source = r.sectionTitle
-              ? `${r.sourceFile} - ${r.sectionTitle}`
-              : r.sourceFile;
-            return `[${i + 1}] Source: ${source}\n${r.content}`;
-          })
-          .join('\n\n---\n\n')
-      : 'No relevant KB context found.';
+    const kbContext = formatSearchResultsForPrompt(searchResults);
 
     debugLog('SymbolAgent', 'KB context retrieved', {
       chunks: searchResults.length,

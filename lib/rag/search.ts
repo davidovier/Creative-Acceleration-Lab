@@ -1,13 +1,20 @@
 /**
  * RAG Search Helper
  * Semantic search using pgvector and OpenAI embeddings
+ * Enhanced with per-agent search profiles for better grounding
  */
 
 import { embedText } from './embed';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { ENABLE_AGENT_DEBUG_LOGS } from '@/lib/agents/config';
 
 // Lazy initialization - only create client when actually needed (not at build time)
 let supabaseClient: SupabaseClient | null = null;
+
+// In-memory RAG cache for speed optimization (Prompt 6)
+// Keyed by composite query string, stores search results
+// Cache lifetime: per-request only (cleared on server restart)
+const ragCache = new Map<string, SearchResult[]>();
 
 function getSupabaseClient(): SupabaseClient {
   if (!supabaseClient) {
@@ -39,6 +46,93 @@ export interface SearchOptions {
   similarityThreshold?: number;
   filterTags?: string[];
 }
+
+// ============================================================================
+// AGENT-AWARE RAG SEARCH (PROMPT 6)
+// ============================================================================
+
+export type AgentName = 'insight' | 'story' | 'prototype' | 'symbol';
+
+export interface RagQueryOptions {
+  agent: AgentName;
+  userText: string;
+  extraHints?: string[];
+  k?: number;
+  threshold?: number;
+}
+
+/**
+ * Per-agent search profiles
+ * Each agent gets optimized query hints and parameters for better KB grounding
+ */
+interface AgentSearchProfile {
+  defaultK: number;
+  defaultThreshold: number;
+  queryHints: string[];
+  preferredSources?: string[]; // Optional source_file prefixes to prioritize
+}
+
+const AGENT_SEARCH_PROFILES: Record<AgentName, AgentSearchProfile> = {
+  insight: {
+    defaultK: 7,
+    defaultThreshold: 0.55,
+    queryHints: [
+      'emotional diagnostics',
+      'archetypes',
+      'identity',
+      'creative tension',
+      'founder psychology',
+      'psychological patterns',
+      'inner conflicts',
+    ],
+    preferredSources: ['Frameworks', 'Human_Story_Engine'],
+  },
+  story: {
+    defaultK: 6,
+    defaultThreshold: 0.55,
+    queryHints: [
+      'Human Story Engine',
+      'narrative framework',
+      'myth structure',
+      'archetypal story',
+      'hero journey',
+      'transformation arc',
+      'symbolic narrative',
+    ],
+    preferredSources: ['Human_Story_Engine', 'Frameworks'],
+  },
+  prototype: {
+    defaultK: 8,
+    defaultThreshold: 0.50,
+    queryHints: [
+      '5-Day Prototype Ritual',
+      'Creative Acceleration',
+      'Speed Studio',
+      'anti-bureaucracy',
+      'experiments',
+      'rituals',
+      'rapid prototyping',
+      'hands-on creation',
+      'expressive experiments',
+    ],
+    preferredSources: ['Frameworks', 'Speed_Studio', '5_Day_Prototype'],
+  },
+  symbol: {
+    defaultK: 7,
+    defaultThreshold: 0.55,
+    queryHints: [
+      'symbolic mapping',
+      'symbol dictionary',
+      'color psychology',
+      'geometry',
+      'metaphor',
+      'visual language',
+      'archetypal imagery',
+      'design symbolism',
+    ],
+    preferredSources: ['Frameworks', 'Symbol_Systems'],
+  },
+};
 
 /**
  * Search knowledge base using semantic similarity
@@ -99,6 +193,83 @@ export async function searchKB(
 }
 
 /**
+ * Agent-aware knowledge base search
+ * Uses per-agent profiles for optimized query construction and parameters
+ * Includes in-memory caching for speed optimization
+ *
+ * @param options - Agent name, user text, optional hints and overrides
+ * @returns Array of matching chunks with similarity scores
+ */
+export async function searchKbForAgent(
+  options: RagQueryOptions
+): Promise<SearchResult[]> {
+  const { agent, userText, extraHints = [], k, threshold } = options;
+
+  // Get agent profile
+  const profile = AGENT_SEARCH_PROFILES[agent];
+  if (!profile) {
+    throw new Error(`Unknown agent: ${agent}`);
+  }
+
+  // Build composite query string
+  // Combine: cleaned user text + agent hints + extra hints
+  const cleanedUserText = userText.trim().slice(0, 300); // Use first 300 chars to avoid token limits
+  const allHints = [...profile.queryHints, ...extraHints];
+  const hintsString = allHints.join(' ');
+
+  const compositeQuery = `${hintsString} ${cleanedUserText}`;
+
+  // Use profile defaults or overrides
+  const finalK = k ?? profile.defaultK;
+  const finalThreshold = threshold ?? profile.defaultThreshold;
+
+  // Generate cache key: agent + query + params
+  const cacheKey = `${agent}:${compositeQuery}:${finalK}:${finalThreshold}`;
+
+  // Check cache first
+  if (ragCache.has(cacheKey)) {
+    if (ENABLE_AGENT_DEBUG_LOGS) {
+      console.log(`\n🔍 [RAG] ${agent.toUpperCase()} Agent Search (CACHED)`);
+      console.log(`   Cache hit for query`);
+    }
+    return ragCache.get(cacheKey)!;
+  }
+
+  // Debug logging
+  if (ENABLE_AGENT_DEBUG_LOGS) {
+    console.log(`\n🔍 [RAG] ${agent.toUpperCase()} Agent Search`);
+    console.log(`   Query length: ${compositeQuery.length} chars`);
+    console.log(`   Parameters: k=${finalK}, threshold=${finalThreshold}`);
+    console.log(`   Hints: ${profile.queryHints.slice(0, 3).join(', ')}...`);
+  }
+
+  // Execute search
+  const results = await searchKB(compositeQuery, {
+    k: finalK,
+    similarityThreshold: finalThreshold,
+  });
+
+  // Store in cache
+  ragCache.set(cacheKey, results);
+
+  // Debug: show what we found
+  if (ENABLE_AGENT_DEBUG_LOGS && results.length > 0) {
+    console.log(`   ✓ Found ${results.length} chunks`);
+    const topSources = results
+      .slice(0, 3)
+      .map(r => {
+        const source = r.sectionTitle ? `${r.sourceFile}/${r.sectionTitle}` : r.sourceFile;
+        return `${source} (${r.similarity.toFixed(2)})`;
+      });
+    console.log(`   Top sources:\n     • ${topSources.join('\n     • ')}`);
+  } else if (ENABLE_AGENT_DEBUG_LOGS) {
+    console.log(`   ⚠️  No chunks found above threshold`);
+  }
+
+  return results;
+}
+
+/**
  * Search KB and format results for agent context
  * @param query - User query text
  * @param k - Number of results to return
@@ -124,6 +295,52 @@ export async function searchKBForContext(
   });
 
   return contextParts.join('\n\n---\n\n');
+}
+
+/**
+ * Format search results for agent prompts
+ * @param results - Search results from searchKbForAgent
+ * @returns Formatted context string
+ */
+export function formatSearchResultsForPrompt(results: SearchResult[]): string {
+  if (results.length === 0) {
+    return 'No relevant KB context found.';
+  }
+
+  const contextParts = results.map((result, index) => {
+    const source = result.sectionTitle
+      ? `${result.sourceFile} - ${result.sectionTitle}`
+      : result.sourceFile;
+
+    return `[${index + 1}] Source: ${source}\n${result.content}`;
+  });
+
+  return contextParts.join('\n\n---\n\n');
+}
+
+/**
+ * Clear RAG cache
+ * Useful for testing or when KB content changes
+ */
+export function clearRagCache(): void {
+  ragCache.clear();
+  if (ENABLE_AGENT_DEBUG_LOGS) {
+    console.log('[RAG Cache] Cleared');
+  }
+}
+
+/**
+ * Get RAG cache statistics
+ * @returns Cache size and hit rate info
+ */
+export function getRagCacheStats(): {
+  size: number;
+  keys: string[];
+} {
+  return {
+    size: ragCache.size,
+    keys: Array.from(ragCache.keys()).map(k => k.split(':')[0]), // Just show agent names
+  };
 }
 
 /**

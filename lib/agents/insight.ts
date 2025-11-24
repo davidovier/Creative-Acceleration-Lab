@@ -3,15 +3,13 @@
  * Emotional and psychological analysis based on creative archetypes
  */
 
-import { searchKB } from '@/lib/rag/search';
+import { searchKbForAgent, formatSearchResultsForPrompt } from '@/lib/rag/search';
 import { callClaudeWithFallback } from '@/lib/anthropicClient';
 import { InsightOutput } from './types';
 import {
   AGENT_MODEL,
   AGENT_TEMPERATURE,
   MAX_TOKENS_INSIGHT,
-  RAG_TOP_K,
-  RAG_SIMILARITY_THRESHOLD,
   debugLog,
 } from './config';
 import { buildInsightSystemPrompt } from './prompts';
@@ -26,25 +24,14 @@ export async function runInsightAgent(userText: string): Promise<InsightOutput> 
   debugLog('InsightAgent', 'Input length', { chars: userText.length });
 
   try {
-    // Step 1: Search KB for relevant context
-    const kbQuery = `creative archetypes emotional patterns psychological frameworks core wound core desire ${userText.slice(0, 100)}`;
-
-    const searchResults = await searchKB(kbQuery, {
-      k: RAG_TOP_K,
-      similarityThreshold: RAG_SIMILARITY_THRESHOLD,
+    // Step 1: Search KB using agent-aware search
+    const searchResults = await searchKbForAgent({
+      agent: 'insight',
+      userText,
     });
 
     // Format KB context
-    const kbContext = searchResults.length > 0
-      ? searchResults
-          .map((r, i) => {
-            const source = r.sectionTitle
-              ? `${r.sourceFile} - ${r.sectionTitle}`
-              : r.sourceFile;
-            return `[${i + 1}] Source: ${source}\n${r.content}`;
-          })
-          .join('\n\n---\n\n')
-      : 'No relevant KB context found.';
+    const kbContext = formatSearchResultsForPrompt(searchResults);
 
     debugLog('InsightAgent', 'KB context retrieved', {
       chunks: searchResults.length,

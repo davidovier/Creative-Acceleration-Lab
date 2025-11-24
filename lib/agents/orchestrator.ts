@@ -9,6 +9,7 @@ import { runPrototypeAgent } from './prototype';
 import { runSymbolAgent } from './symbol';
 import { SessionReport } from './types';
 import { ENABLE_AGENT_DEBUG_LOGS } from './config';
+import { computeSessionConsistency, getConsistencyRating } from './consistency';
 
 /**
  * Run full session with all four agents sequentially
@@ -38,7 +39,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
 
   try {
     // Step 1: Insight Agent
-    console.log('🔮 [1/4] Insight Agent — Mapping emotional terrain...');
+    console.log('🔮 [1/5] Insight Agent — Mapping emotional terrain...');
     const insightStart = Date.now();
     const insight = await runInsightAgent(userText);
     const insightDuration = Date.now() - insightStart;
@@ -51,7 +52,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     console.log('');
 
     // Step 2: Story Agent
-    console.log('📖 [2/4] Story Agent — Crafting micro-myth...');
+    console.log('📖 [2/5] Story Agent — Crafting micro-myth...');
     const storyStart = Date.now();
     const story = await runStoryAgent(userText, insight);
     const storyDuration = Date.now() - storyStart;
@@ -64,7 +65,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     console.log('');
 
     // Step 3: Prototype Agent
-    console.log('⚡ [3/4] Prototype Agent — Designing acceleration sprint...');
+    console.log('⚡ [3/5] Prototype Agent — Designing acceleration sprint...');
     const prototypeStart = Date.now();
     const prototype = await runPrototypeAgent(userText, insight, story);
     const prototypeDuration = Date.now() - prototypeStart;
@@ -79,7 +80,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     console.log('');
 
     // Step 4: Symbol Agent
-    console.log('✨ [4/4] Symbol Agent — Distilling visual language...');
+    console.log('✨ [4/5] Symbol Agent — Distilling visual language...');
     const symbolStart = Date.now();
     const symbol = await runSymbolAgent(userText, insight, story, prototype);
     const symbolDuration = Date.now() - symbolStart;
@@ -87,6 +88,18 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     console.log(`   → Primary: ${symbol.primary_symbol.slice(0, 55)}...`);
     console.log(`   → Motifs: ${symbol.secondary_symbols.length} + ${symbol.conceptual_motifs.length}`);
     console.log(`   → Colors: ${symbol.color_palette_suggestions.length}`);
+    console.log('');
+
+    // Step 5: Compute consistency score
+    console.log('🔗 [5/5] Consistency Check — Validating cross-agent alignment...');
+    const consistencyStart = Date.now();
+    const consistency = computeSessionConsistency(insight, story, prototype, symbol);
+    const consistencyDuration = Date.now() - consistencyStart;
+    console.log(`   ✓ Complete (${(consistencyDuration / 1000).toFixed(2)}s)`);
+    console.log(`   → Score: ${consistency.score}/100 (${getConsistencyRating(consistency.score)})`);
+    if (ENABLE_AGENT_DEBUG_LOGS) {
+      console.log(`   → Checks: ${consistency.notes.filter(n => n.startsWith('✓')).length}/${consistency.notes.length} passed`);
+    }
     console.log('');
 
     // Build final report
@@ -99,6 +112,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
       prototype,
       symbol,
       totalDuration,
+      consistency,
     };
 
     // Enhanced completion summary
@@ -111,6 +125,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     console.log(`   • Story:     ${(storyDuration / 1000).toFixed(2)}s (${((storyDuration / totalDuration) * 100).toFixed(0)}%)`);
     console.log(`   • Prototype: ${(prototypeDuration / 1000).toFixed(2)}s (${((prototypeDuration / totalDuration) * 100).toFixed(0)}%)`);
     console.log(`   • Symbol:    ${(symbolDuration / 1000).toFixed(2)}s (${((symbolDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log(`🎯 Coherence: ${consistency.score}/100 (${getConsistencyRating(consistency.score)})`);
     console.log('═'.repeat(60) + '\n');
 
     return report;

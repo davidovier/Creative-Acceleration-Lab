@@ -3,15 +3,13 @@
  * 5-day sprint plan with concrete tasks
  */
 
-import { searchKB } from '@/lib/rag/search';
+import { searchKbForAgent, formatSearchResultsForPrompt } from '@/lib/rag/search';
 import { callClaudeWithFallback } from '@/lib/anthropicClient';
 import { InsightOutput, StoryOutput, PrototypeOutput } from './types';
 import {
   AGENT_MODEL,
   AGENT_TEMPERATURE,
   MAX_TOKENS_PROTOTYPE,
-  RAG_TOP_K,
-  RAG_SIMILARITY_THRESHOLD,
   debugLog,
 } from './config';
 import { buildPrototypeSystemPrompt, formatInsightForPrompt, formatStoryForPrompt } from './prompts';
@@ -33,25 +31,15 @@ export async function runPrototypeAgent(
   });
 
   try {
-    // Step 1: Search KB for prototyping frameworks
-    const kbQuery = `5-day prototype ritual speed studio rapid prototyping sprint planning constraints creative process ${story.desired_chapter}`;
-
-    const searchResults = await searchKB(kbQuery, {
-      k: RAG_TOP_K,
-      similarityThreshold: RAG_SIMILARITY_THRESHOLD,
+    // Step 1: Search KB using agent-aware search
+    const searchResults = await searchKbForAgent({
+      agent: 'prototype',
+      userText,
+      extraHints: [story.desired_chapter.slice(0, 100)],
     });
 
     // Format KB context
-    const kbContext = searchResults.length > 0
-      ? searchResults
-          .map((r, i) => {
-            const source = r.sectionTitle
-              ? `${r.sourceFile} - ${r.sectionTitle}`
-              : r.sourceFile;
-            return `[${i + 1}] Source: ${source}\n${r.content}`;
-          })
-          .join('\n\n---\n\n')
-      : 'No relevant KB context found.';
+    const kbContext = formatSearchResultsForPrompt(searchResults);
 
     debugLog('PrototypeAgent', 'KB context retrieved', {
       chunks: searchResults.length,

@@ -3,15 +3,13 @@
  * Narrative structure using hero's journey framework
  */
 
-import { searchKB } from '@/lib/rag/search';
+import { searchKbForAgent, formatSearchResultsForPrompt } from '@/lib/rag/search';
 import { callClaudeWithFallback } from '@/lib/anthropicClient';
 import { InsightOutput, StoryOutput } from './types';
 import {
   AGENT_MODEL,
   AGENT_TEMPERATURE,
   MAX_TOKENS_STORY,
-  RAG_TOP_K,
-  RAG_SIMILARITY_THRESHOLD,
   debugLog,
 } from './config';
 import { buildStorySystemPrompt, formatInsightForPrompt } from './prompts';
@@ -32,25 +30,15 @@ export async function runStoryAgent(
   });
 
   try {
-    // Step 1: Search KB for narrative structures
-    const kbQuery = `hero's journey narrative structure mythological patterns story archetype transformation ${insight.archetype_guess}`;
-
-    const searchResults = await searchKB(kbQuery, {
-      k: RAG_TOP_K,
-      similarityThreshold: RAG_SIMILARITY_THRESHOLD,
+    // Step 1: Search KB using agent-aware search
+    const searchResults = await searchKbForAgent({
+      agent: 'story',
+      userText,
+      extraHints: [insight.archetype_guess],
     });
 
     // Format KB context
-    const kbContext = searchResults.length > 0
-      ? searchResults
-          .map((r, i) => {
-            const source = r.sectionTitle
-              ? `${r.sourceFile} - ${r.sectionTitle}`
-              : r.sourceFile;
-            return `[${i + 1}] Source: ${source}\n${r.content}`;
-          })
-          .join('\n\n---\n\n')
-      : 'No relevant KB context found.';
+    const kbContext = formatSearchResultsForPrompt(searchResults);
 
     debugLog('StoryAgent', 'KB context retrieved', {
       chunks: searchResults.length,

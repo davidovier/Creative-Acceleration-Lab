@@ -75,6 +75,10 @@ export interface SessionReport {
   prototype: PrototypeOutput;
   symbol: SymbolOutput;
   totalDuration?: number; // milliseconds
+  consistency?: {
+    score: number;
+    notes: string[];
+  };
 }
 
 // ============================================================================

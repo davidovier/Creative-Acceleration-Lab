@@ -51,6 +51,10 @@ interface SessionReport {
   prototype: PrototypeOutput;
   symbol: SymbolOutput;
   totalDuration?: number;
+  consistency?: {
+    score: number;
+    notes: string[];
+  };
 }
 
 interface SessionResult {
@@ -392,6 +396,65 @@ export default function SessionPage() {
                 </div>
               </div>
             </div>
+
+            {/* Consistency Score (Prompt 6) */}
+            {result.report.consistency && (
+              <div className="mt-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                      🎯 Coherence Score
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">Cross-agent thematic alignment</p>
+                  </div>
+                  <div className="text-center">
+                    <div className={`text-4xl font-bold ${
+                      result.report.consistency.score >= 90 ? 'text-green-600' :
+                      result.report.consistency.score >= 75 ? 'text-blue-600' :
+                      result.report.consistency.score >= 60 ? 'text-yellow-600' :
+                      result.report.consistency.score >= 40 ? 'text-orange-600' :
+                      'text-red-600'
+                    }`}>
+                      {result.report.consistency.score}
+                    </div>
+                    <div className="text-sm text-gray-500">out of 100</div>
+                    <div className={`text-xs font-semibold mt-1 ${
+                      result.report.consistency.score >= 90 ? 'text-green-700' :
+                      result.report.consistency.score >= 75 ? 'text-blue-700' :
+                      result.report.consistency.score >= 60 ? 'text-yellow-700' :
+                      result.report.consistency.score >= 40 ? 'text-orange-700' :
+                      'text-red-700'
+                    }`}>
+                      {result.report.consistency.score >= 90 ? 'Excellent' :
+                       result.report.consistency.score >= 75 ? 'Good' :
+                       result.report.consistency.score >= 60 ? 'Fair' :
+                       result.report.consistency.score >= 40 ? 'Weak' : 'Poor'}
+                    </div>
+                  </div>
+                </div>
+
+                <details className="mt-4">
+                  <summary className="cursor-pointer text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors">
+                    View detailed consistency checks ({result.report.consistency.notes.filter(n => n.startsWith('✓')).length}/{result.report.consistency.notes.length} passed)
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    {result.report.consistency.notes.map((note, i) => (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-2 text-sm p-2 rounded ${
+                          note.startsWith('✓') ? 'bg-green-50 text-green-800' :
+                          note.startsWith('~') ? 'bg-yellow-50 text-yellow-800' :
+                          'bg-red-50 text-red-800'
+                        }`}
+                      >
+                        <span className="font-mono">{note.charAt(0)}</span>
+                        <span>{note.slice(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              </div>
+            )}
 
             {/* Session Meta */}
             {result.report.totalDuration && (
