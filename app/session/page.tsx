@@ -5,7 +5,8 @@
  * Immersive 3-panel dashboard with animations and symbolic motifs
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import FlowMeter from '@/components/FlowMeter';
 import { emotionalColors, getConsistencyColor, getDominantColor } from '@/theme/colors';
@@ -99,11 +100,58 @@ interface SessionResult {
 }
 
 export default function CreativeOSSession() {
+  const searchParams = useSearchParams();
   const [userInput, setUserInput] = useState('');
   const [result, setResult] = useState<SessionResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showRawJson, setShowRawJson] = useState(false);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [savingSession, setSavingSession] = useState(false);
+  const [savedMessage, setSavedMessage] = useState('');
+
+  // Get projectId from URL
+  useEffect(() => {
+    const pid = searchParams?.get('projectId');
+    if (pid) setProjectId(pid);
+  }, [searchParams]);
+
+  // Auto-save session when result is available
+  useEffect(() => {
+    if (result?.ok && result.report && !sessionId) {
+      saveSession();
+    }
+  }, [result]);
+
+  const saveSession = async () => {
+    if (!result?.report || savingSession) return;
+
+    setSavingSession(true);
+    setSavedMessage('');
+
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          report: result.report,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to save session');
+
+      const data = await res.json();
+      setSessionId(data.sessionId);
+      setSavedMessage('Session saved ✓');
+    } catch (err: any) {
+      console.error('Error saving session:', err);
+      setSavedMessage('Failed to save session');
+    } finally {
+      setSavingSession(false);
+    }
+  };
 
   const handleGenerateSession = async () => {
     if (!userInput.trim()) {
@@ -189,22 +237,29 @@ export default function CreativeOSSession() {
             </div>
           </div>
 
-          {result?.report && (
-            <div className="flex gap-2">
-              <button
-                onClick={navigateToRitual}
-                className="px-4 py-2 text-sm bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-md"
-              >
-                🕯️ Ritual Mode
-              </button>
-              <button
-                onClick={handleExport}
-                className="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all shadow-md"
-              >
-                📥 Export
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-4">
+            {savedMessage && (
+              <div className="text-sm text-green-600 font-semibold">
+                {savedMessage}
+              </div>
+            )}
+            {result?.report && (
+              <div className="flex gap-2">
+                <button
+                  onClick={navigateToRitual}
+                  className="px-4 py-2 text-sm bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-md"
+                >
+                  🕯️ Ritual Mode
+                </button>
+                <button
+                  onClick={handleExport}
+                  className="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all shadow-md"
+                >
+                  📥 Export
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </motion.header>
 
@@ -218,6 +273,11 @@ export default function CreativeOSSession() {
             animate="visible"
           >
             <div className="bg-white rounded-2xl shadow-xl p-8 border-2 border-purple-100">
+              {projectId && (
+                <div className="mb-4 px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg text-sm text-purple-700">
+                  📁 Creating session for project
+                </div>
+              )}
               <label className="block text-lg font-semibold text-gray-900 mb-3">
                 Your Creative Challenge
               </label>
