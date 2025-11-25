@@ -3,6 +3,8 @@
  * TypeScript interfaces for all agent inputs and outputs
  */
 
+import { SSICSummary } from '../ssic/context';
+
 // ============================================================================
 // AGENT OUTPUTS
 // ============================================================================
@@ -93,6 +95,7 @@ export interface SessionReport {
     pronoun: string;
     keywords: string[];
   };
+  ssic?: SSICSummary; // Prompt 9: Physics-based symbolic intelligence (debug only)
 }
 
 // ============================================================================

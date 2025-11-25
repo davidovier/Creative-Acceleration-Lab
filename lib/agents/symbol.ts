@@ -13,9 +13,10 @@ import {
   debugLog,
 } from './config';
 import { buildSymbolSystemPrompt, formatInsightForPrompt, formatStoryForPrompt, formatPrototypeForPrompt } from './prompts';
+import { EnrichedContext } from '../ssic/context';
 
 /**
- * Symbol Weaver Agent (Prompt 7: keyword & pronoun-aware)
+ * Symbol Weaver Agent (Prompt 7: keyword & pronoun-aware + Prompt 9: SSIC-aware)
  * Generates visual symbols and design elements
  */
 export async function runSymbolAgent(
@@ -24,7 +25,8 @@ export async function runSymbolAgent(
   story: StoryOutput,
   prototype: PrototypeOutput,
   keywords: string[],
-  pronoun: string
+  pronoun: string,
+  ssicContext?: EnrichedContext
 ): Promise<SymbolOutput> {
   const startTime = Date.now();
   console.log('[Symbol Agent] Weaving symbols...');
@@ -51,11 +53,11 @@ export async function runSymbolAgent(
       contextLength: kbContext.length,
     });
 
-    // Step 2: Build system prompt using prompt builder with keywords & pronoun
+    // Step 2: Build system prompt using prompt builder with keywords, pronoun & SSIC
     const insightJson = formatInsightForPrompt(insight);
     const storyJson = formatStoryForPrompt(story);
     const prototypeJson = formatPrototypeForPrompt(prototype);
-    const systemPrompt = buildSymbolSystemPrompt(kbContext, insightJson, storyJson, prototypeJson, keywords, pronoun);
+    const systemPrompt = buildSymbolSystemPrompt(kbContext, insightJson, storyJson, prototypeJson, keywords, pronoun, ssicContext);
 
     // Step 3: Call Claude with fallback (returns raw strings, will be mapped to ColorEmotion later)
     const fallbackObject: SymbolOutput = {

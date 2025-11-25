@@ -4,6 +4,8 @@
  */
 
 import { InsightOutput, StoryOutput, PrototypeOutput } from './types';
+import { formatSSICForPrompt, getAgentSSICInstructions, EnrichedContext } from '../ssic/context';
+import { AgentName } from '../ssic/state';
 
 // ============================================================================
 // INSIGHT AGENT PROMPT
@@ -65,15 +67,21 @@ Respond ONLY with JSON.`;
  * @param insightJson - JSON string of Insight agent output
  * @param keywords - Shared vocabulary from Insight
  * @param pronoun - Preferred pronoun (they/he/she)
+ * @param ssicContext - Optional SSIC enriched context (Prompt 9)
  * @returns Complete system prompt string
  */
 export function buildStorySystemPrompt(
   kbContext: string,
   insightJson: string,
   keywords: string[],
-  pronoun: string
+  pronoun: string,
+  ssicContext?: EnrichedContext
 ): string {
   const keywordsFormatted = keywords.length > 0 ? keywords.join(', ') : '(none)';
+
+  const ssicSection = ssicContext
+    ? `\n${formatSSICForPrompt('story', ssicContext)}\n${getAgentSSICInstructions('story')}`
+    : '';
 
   return `Craft micro-myths. Sharp, minimalist, archetypal. No melodrama or fantasy epics.
 
@@ -83,7 +91,7 @@ Insight: ${insightJson}
 
 Shared Keywords (integrate naturally): ${keywordsFormatted}
 
-Pronoun: Use "${pronoun}" when referring to the hero.
+Pronoun: Use "${pronoun}" when referring to the hero.${ssicSection}
 
 Output:
 • **hero_description** — Identity, tension, creative force. Concise. Real.
@@ -116,22 +124,29 @@ JSON only.`;
  * @param insightJson - JSON string of Insight agent output
  * @param storyJson - JSON string of Story agent output
  * @param keywords - Shared vocabulary from Insight
+ * @param ssicContext - Optional SSIC enriched context (Prompt 9)
  * @returns Complete system prompt string
  */
 export function buildPrototypeSystemPrompt(
   kbContext: string,
   insightJson: string,
   storyJson: string,
-  keywords: string[]
+  keywords: string[],
+  ssicContext?: EnrichedContext
 ): string {
   const keywordsFormatted = keywords.length > 0 ? keywords.join(', ') : '(none)';
+
+  const ssicSection = ssicContext
+    ? `\n${formatSSICForPrompt('prototype', ssicContext)}\n${getAgentSSICInstructions('prototype')}`
+    : '';
+
   return `5-day Creative Acceleration Sprint. Fast, experimental, emotionally grounded. Zero corporate language.
 
 KB: ${kbContext}
 
 Previous: ${insightJson} ${storyJson}
 
-Shared Keywords (weave into tasks): ${keywordsFormatted}
+Shared Keywords (weave into tasks): ${keywordsFormatted}${ssicSection}
 
 Output:
 • **goal** — One sentence. Sharp. Achievable. Emotionally resonant.
@@ -172,6 +187,7 @@ JSON only.`;
  * @param prototypeJson - JSON string of Prototype agent output
  * @param keywords - Shared vocabulary from Insight
  * @param pronoun - Preferred pronoun (they/he/she)
+ * @param ssicContext - Optional SSIC enriched context (Prompt 9)
  * @returns Complete system prompt string
  */
 export function buildSymbolSystemPrompt(
@@ -180,9 +196,14 @@ export function buildSymbolSystemPrompt(
   storyJson: string,
   prototypeJson: string,
   keywords: string[],
-  pronoun: string
+  pronoun: string,
+  ssicContext?: EnrichedContext
 ): string {
   const keywordsFormatted = keywords.length > 0 ? keywords.join(', ') : '(none)';
+
+  const ssicSection = ssicContext
+    ? `\n${formatSSICForPrompt('symbol', ssicContext)}\n${getAgentSSICInstructions('symbol')}`
+    : '';
 
   return `Translate tension into form. Minimalist elegance. Abstract/charged. Grounded in emotional truth.
 
@@ -192,7 +213,7 @@ Previous: ${insightJson} ${storyJson} ${prototypeJson}
 
 Shared Keywords: ${keywordsFormatted}
 
-Pronoun: Use "${pronoun}" when describing the journey.
+Pronoun: Use "${pronoun}" when describing the journey.${ssicSection}
 
 Output:
 • **primary_symbol** — Core visual representation of ${pronoun}r journey. 2-3 sentences. Poetic. Precise. Emotionally charged.

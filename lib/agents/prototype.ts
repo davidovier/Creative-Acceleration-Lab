@@ -13,16 +13,18 @@ import {
   debugLog,
 } from './config';
 import { buildPrototypeSystemPrompt, formatInsightForPrompt, formatStoryForPrompt } from './prompts';
+import { EnrichedContext } from '../ssic/context';
 
 /**
- * Prototype Engineer Agent (Prompt 7: keyword-aware)
+ * Prototype Engineer Agent (Prompt 7: keyword-aware + Prompt 9: SSIC-aware)
  * Creates actionable 5-day prototype plan
  */
 export async function runPrototypeAgent(
   userText: string,
   insight: InsightOutput,
   story: StoryOutput,
-  keywords: string[]
+  keywords: string[],
+  ssicContext?: EnrichedContext
 ): Promise<PrototypeOutput> {
   const startTime = Date.now();
   console.log('[Prototype Agent] Building sprint plan...');
@@ -48,10 +50,10 @@ export async function runPrototypeAgent(
       contextLength: kbContext.length,
     });
 
-    // Step 2: Build system prompt using prompt builder with keywords
+    // Step 2: Build system prompt using prompt builder with keywords & SSIC
     const insightJson = formatInsightForPrompt(insight);
     const storyJson = formatStoryForPrompt(story);
-    const systemPrompt = buildPrototypeSystemPrompt(kbContext, insightJson, storyJson, keywords);
+    const systemPrompt = buildPrototypeSystemPrompt(kbContext, insightJson, storyJson, keywords, ssicContext);
 
     // Step 3: Call Claude with fallback
     const fallbackObject: PrototypeOutput = {

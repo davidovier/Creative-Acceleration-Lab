@@ -1,5 +1,6 @@
 /**
  * Agent Orchestrator (Prompt 7: Enhanced with preprocessing & refinement)
+ * (Prompt 9: Enhanced with SSIC physics-based symbolic intelligence)
  * Sequential execution of all four agents with shared vocabulary and symbolic linkage
  */
 
@@ -14,20 +15,24 @@ import { preprocessUserInput } from './preprocess';
 import { extractKeywords } from './vocabulary';
 import { mapColorsToEmotion } from './colorLogic';
 import { refinePrototypeWithSymbols } from './refinePrototype';
+import { extractPhysicsFromInsight } from '../ssic/extractPhysics';
+import { enrichAgentContext, extractSSICSummary } from '../ssic/context';
+import { SSICState } from '../ssic/state';
 
 /**
- * Run full session with all four agents sequentially (Prompt 7)
+ * Run full session with all four agents sequentially (Prompt 7 + Prompt 9)
  *
  * Execution flow:
  * 0. Preprocessing - Extract quotes, pronoun, clean text
  * 1. Insight Agent - Emotional and archetypal analysis (quote-aware)
  * 2. Vocabulary Extraction - Shared keywords for cross-agent coherence
- * 3. Story Agent - Narrative structure (keyword & pronoun-aware)
- * 4. Prototype Agent - 5-day sprint plan (keyword-aware)
- * 5. Symbol Agent - Visual symbols (keyword & pronoun-aware)
+ * 2.5. SSIC Physics Extraction - Build unified symbolic state (Prompt 9)
+ * 3. Story Agent - Narrative structure (keyword, pronoun & SSIC-aware)
+ * 4. Prototype Agent - 5-day sprint plan (keyword & SSIC-aware)
+ * 5. Symbol Agent - Visual symbols (keyword, pronoun & SSIC-aware)
  * 6. Color Mapping - Transform palette with emotional meanings
  * 7. Refinement - Weave symbolic language into prototype tasks
- * 8. Consistency Check - Validate cross-agent alignment
+ * 8. Consistency Check - Validate cross-agent alignment (SSIC-enhanced)
  *
  * @param userText - User's input text describing their creative challenge
  * @returns Complete session report with all agent outputs and preprocessing data
@@ -37,7 +42,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
 
   // Enhanced session header
   console.log('\n' + '═'.repeat(60));
-  console.log('🎨  CREATIVE ACCELERATION SESSION (Prompt 7)');
+  console.log('🎨  CREATIVE ACCELERATION SESSION (Prompt 7 + SSIC)');
   console.log('═'.repeat(60));
   console.log(`📝 Input: ${userText.length} chars`);
   if (ENABLE_AGENT_DEBUG_LOGS) {
@@ -77,7 +82,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     console.log('');
 
     // Step 2: Extract shared vocabulary
-    console.log('📚 [2/8] Vocabulary Extraction — Building shared lexicon...');
+    console.log('📚 [2/9] Vocabulary Extraction — Building shared lexicon...');
     const vocabStart = Date.now();
     const keywords = extractKeywords(insight);
     const vocabDuration = Date.now() - vocabStart;
@@ -88,10 +93,30 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     }
     console.log('');
 
-    // Step 3: Story Agent (keyword & pronoun-aware)
-    console.log('📖 [3/8] Story Agent — Crafting micro-myth...');
+    // Step 2.5: SSIC Physics Extraction (Prompt 9)
+    console.log('⚛️  [2.5/9] SSIC Physics — Building unified symbolic state...');
+    const ssicStart = Date.now();
+    const ssicState: SSICState = extractPhysicsFromInsight(insight, keywords);
+    const ssicDuration = Date.now() - ssicStart;
+    console.log(`   ✓ Complete (${(ssicDuration / 1000).toFixed(2)}s)`);
+    console.log(`   → Charge: ${ssicState.charge.toFixed(0)} | Velocity: ${ssicState.velocity.toFixed(0)} | Inertia: ${ssicState.inertia.toFixed(0)}`);
+    if (ENABLE_AGENT_DEBUG_LOGS) {
+      console.log(`   → Flow Potential: ${ssicState.flowPotential.toFixed(0)}`);
+      console.log(`   → Resistance Zones: ${ssicState.resistanceZones.join(', ')}`);
+      console.log(`   → Breakthrough Points: ${ssicState.breakthroughPoints.join(', ')}`);
+    }
+    console.log('');
+
+    // Step 3: Story Agent (keyword, pronoun & SSIC-aware)
+    console.log('📖 [3/9] Story Agent — Crafting micro-myth...');
     const storyStart = Date.now();
-    const story = await runStoryAgent(cleanedText, insight, keywords, pronoun);
+    const storyEnriched = enrichAgentContext('story', ssicState, {
+      userText: cleanedText,
+      insight,
+      keywords,
+      pronoun,
+    });
+    const story = await runStoryAgent(cleanedText, insight, keywords, pronoun, storyEnriched.ssic);
     const storyDuration = Date.now() - storyStart;
     console.log(`   ✓ Complete (${(storyDuration / 1000).toFixed(2)}s)`);
     console.log(`   → Current: ${story.current_chapter.slice(0, 55)}...`);
@@ -101,10 +126,16 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     }
     console.log('');
 
-    // Step 4: Prototype Agent (keyword-aware)
-    console.log('⚡ [4/8] Prototype Agent — Designing acceleration sprint...');
+    // Step 4: Prototype Agent (keyword & SSIC-aware)
+    console.log('⚡ [4/9] Prototype Agent — Designing acceleration sprint...');
     const prototypeStart = Date.now();
-    const initialPrototype = await runPrototypeAgent(cleanedText, insight, story, keywords);
+    const prototypeEnriched = enrichAgentContext('prototype', ssicState, {
+      userText: cleanedText,
+      insight,
+      story,
+      keywords,
+    });
+    const initialPrototype = await runPrototypeAgent(cleanedText, insight, story, keywords, prototypeEnriched.ssic);
     const prototypeDuration = Date.now() - prototypeStart;
     console.log(`   ✓ Complete (${(prototypeDuration / 1000).toFixed(2)}s)`);
     console.log(`   → Goal: ${initialPrototype.goal.slice(0, 60)}...`);
@@ -116,10 +147,18 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     }
     console.log('');
 
-    // Step 5: Symbol Agent (keyword & pronoun-aware)
-    console.log('✨ [5/8] Symbol Agent — Distilling visual language...');
+    // Step 5: Symbol Agent (keyword, pronoun & SSIC-aware)
+    console.log('✨ [5/9] Symbol Agent — Distilling visual language...');
     const symbolStart = Date.now();
-    const rawSymbol = await runSymbolAgent(cleanedText, insight, story, initialPrototype, keywords, pronoun);
+    const symbolEnriched = enrichAgentContext('symbol', ssicState, {
+      userText: cleanedText,
+      insight,
+      story,
+      prototype: initialPrototype,
+      keywords,
+      pronoun,
+    });
+    const rawSymbol = await runSymbolAgent(cleanedText, insight, story, initialPrototype, keywords, pronoun, symbolEnriched.ssic);
     const symbolDuration = Date.now() - symbolStart;
     console.log(`   ✓ Complete (${(symbolDuration / 1000).toFixed(2)}s)`);
     console.log(`   → Primary: ${rawSymbol.primary_symbol.slice(0, 55)}...`);
@@ -128,7 +167,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     console.log('');
 
     // Step 6: Color Mapping
-    console.log('🎨 [6/8] Color Mapping — Associating emotions with palette...');
+    console.log('🎨 [6/9] Color Mapping — Associating emotions with palette...');
     const colorStart = Date.now();
     const colorEmotions = mapColorsToEmotion(
       rawSymbol.color_palette_suggestions.map(c => typeof c === 'string' ? c : c.color),
@@ -147,7 +186,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     console.log('');
 
     // Step 7: Refine Prototype with Symbolic Language
-    console.log('🔗 [7/8] Prototype Refinement — Weaving symbolic language...');
+    console.log('🔗 [7/9] Prototype Refinement — Weaving symbolic language...');
     const refineStart = Date.now();
     const prototype = await refinePrototypeWithSymbols({
       userText: cleanedText,
@@ -164,10 +203,10 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     }
     console.log('');
 
-    // Step 8: Compute consistency score
-    console.log('🔍 [8/8] Consistency Check — Validating cross-agent alignment...');
+    // Step 8: Compute consistency score (SSIC-enhanced)
+    console.log('🔍 [8/9] Consistency Check — Validating cross-agent alignment...');
     const consistencyStart = Date.now();
-    const consistency = computeSessionConsistency(insight, story, prototype, symbol);
+    const consistency = computeSessionConsistency(insight, story, prototype, symbol, ssicState);
     const consistencyDuration = Date.now() - consistencyStart;
     console.log(`   ✓ Complete (${(consistencyDuration / 1000).toFixed(2)}s)`);
     console.log(`   → Score: ${consistency.score}/100 (${getConsistencyRating(consistency.score)})`);
@@ -176,7 +215,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     }
     console.log('');
 
-    // Build final report with preprocessing data
+    // Build final report with preprocessing data and SSIC summary
     const totalDuration = Date.now() - startTime;
     const report: SessionReport = {
       userText,
@@ -192,6 +231,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
         pronoun,
         keywords,
       },
+      ssic: ENABLE_AGENT_DEBUG_LOGS ? extractSSICSummary(ssicState) : undefined,
     };
 
     // Enhanced completion summary
@@ -202,6 +242,7 @@ export async function runFullSession(userText: string): Promise<SessionReport> {
     console.log(`📊 Breakdown:`);
     console.log(`   • Preprocess: ${(preprocessDuration / 1000).toFixed(2)}s (${((preprocessDuration / totalDuration) * 100).toFixed(0)}%)`);
     console.log(`   • Vocabulary: ${(vocabDuration / 1000).toFixed(2)}s (${((vocabDuration / totalDuration) * 100).toFixed(0)}%)`);
+    console.log(`   • SSIC:       ${(ssicDuration / 1000).toFixed(2)}s (${((ssicDuration / totalDuration) * 100).toFixed(0)}%)`);
     console.log(`   • Insight:    ${(insightDuration / 1000).toFixed(2)}s (${((insightDuration / totalDuration) * 100).toFixed(0)}%)`);
     console.log(`   • Story:      ${(storyDuration / 1000).toFixed(2)}s (${((storyDuration / totalDuration) * 100).toFixed(0)}%)`);
     console.log(`   • Prototype:  ${(prototypeDuration / 1000).toFixed(2)}s (${((prototypeDuration / totalDuration) * 100).toFixed(0)}%)`);

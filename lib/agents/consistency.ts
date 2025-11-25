@@ -1,9 +1,10 @@
 /**
- * Cross-Agent Consistency Checker
+ * Cross-Agent Consistency Checker (Prompt 9: Enhanced with SSIC physics alignment)
  * Validates thematic alignment across all four agents
  */
 
 import { InsightOutput, StoryOutput, PrototypeOutput, SymbolOutput } from './types';
+import { SSICState } from '../ssic/state';
 
 export interface ConsistencyCheck {
   score: number; // 0-100
@@ -11,20 +12,22 @@ export interface ConsistencyCheck {
 }
 
 /**
- * Compute session consistency across all agents
- * Checks for thematic alignment, archetype consistency, and narrative coherence
+ * Compute session consistency across all agents (Prompt 9: SSIC-enhanced)
+ * Checks for thematic alignment, archetype consistency, narrative coherence, and physics metaphor unity
  *
  * @param insight - Insight agent output
  * @param story - Story agent output
  * @param prototype - Prototype agent output
  * @param symbol - Symbol agent output
+ * @param ssic - Optional SSIC state for physics-based checks (Prompt 9)
  * @returns Consistency score and detailed notes
  */
 export function computeSessionConsistency(
   insight: InsightOutput,
   story: StoryOutput,
   prototype: PrototypeOutput,
-  symbol: SymbolOutput
+  symbol: SymbolOutput,
+  ssic?: SSICState
 ): ConsistencyCheck {
   const notes: string[] = [];
   let totalScore = 0;
@@ -196,6 +199,97 @@ export function computeSessionConsistency(
   } else {
     totalScore += 8;
     notes.push('~ Color palette present but may lack explicit emotional connection');
+  }
+
+  // ============================================================================
+  // SSIC PHYSICS CHECKS (Prompt 9) - Only if SSIC is provided
+  // ============================================================================
+  if (ssic) {
+    // CHECK 7: Physics metaphor alignment (10 points)
+    maxScore += 10;
+    const storyTextFull = `${story.hero_description} ${story.villain_description} ${story.story_paragraph}`.toLowerCase();
+    const prototypeTextFull = `${prototype.goal} ${allTasksText}`.toLowerCase();
+    const symbolTextFull = `${symbol.primary_symbol} ${symbol.secondary_symbols.join(' ')}`.toLowerCase();
+
+    // Check for physics-related terms across outputs
+    const physicsTerms = [
+      // Energy/charge terms
+      ...(ssic.charge > 70 ? ['energy', 'charge', 'spark', 'electric', 'power'] : []),
+      // Inertia terms
+      ...(ssic.inertia > 60 ? ['stuck', 'frozen', 'heavy', 'weight', 'block'] : []),
+      // Velocity terms
+      ...(ssic.velocity > 60 ? ['moving', 'flow', 'momentum', 'speed', 'accelerat'] : []),
+      // Turbulence terms
+      ...(ssic.turbulence > 60 ? ['chaos', 'turbulent', 'storm', 'wild'] : []),
+      // Viscosity terms
+      ...(ssic.viscosity > 70 ? ['thick', 'slow', 'methodical', 'dense'] : []),
+    ];
+
+    if (physicsTerms.length > 0) {
+      const storyMatches = physicsTerms.filter(term => storyTextFull.includes(term)).length;
+      const prototypeMatches = physicsTerms.filter(term => prototypeTextFull.includes(term)).length;
+      const symbolMatches = physicsTerms.filter(term => symbolTextFull.includes(term)).length;
+
+      const totalMatches = storyMatches + prototypeMatches + symbolMatches;
+
+      if (totalMatches >= 3) {
+        totalScore += 10;
+        notes.push('✓ [SSIC] Physics metaphors unified across agents');
+      } else if (totalMatches >= 1) {
+        totalScore += 5;
+        notes.push('~ [SSIC] Physics metaphors partially present');
+      } else {
+        notes.push('○ [SSIC] Physics metaphors not strongly reflected in outputs');
+      }
+    } else {
+      // No strong physics profile to check
+      totalScore += 5;
+      notes.push('○ [SSIC] Physics profile neutral, no strong metaphor expected');
+    }
+
+    // CHECK 8: Resistance zones addressed in prototype (10 points)
+    maxScore += 10;
+    if (ssic.resistanceZones.length > 0) {
+      const resistanceWords = ssic.resistanceZones
+        .flatMap(zone => zone.toLowerCase().split(' '))
+        .filter(w => w.length > 4);
+
+      const prototypeAddressesResistance = resistanceWords.some(word =>
+        prototypeTextFull.includes(word)
+      );
+
+      if (prototypeAddressesResistance) {
+        totalScore += 10;
+        notes.push('✓ [SSIC] Prototype addresses resistance zones');
+      } else {
+        notes.push('○ [SSIC] Prototype may not explicitly address resistance zones');
+      }
+    } else {
+      totalScore += 5;
+      notes.push('○ [SSIC] No strong resistance zones detected');
+    }
+
+    // CHECK 9: Breakthrough points reflected in story arc (10 points)
+    maxScore += 10;
+    if (ssic.breakthroughPoints.length > 0) {
+      const breakthroughWords = ssic.breakthroughPoints
+        .flatMap(point => point.toLowerCase().split(' '))
+        .filter(w => w.length > 4);
+
+      const storyReflectsBreakthrough = breakthroughWords.some(word =>
+        storyTextFull.includes(word) || story.desired_chapter.toLowerCase().includes(word)
+      );
+
+      if (storyReflectsBreakthrough) {
+        totalScore += 10;
+        notes.push('✓ [SSIC] Story arc reflects breakthrough points');
+      } else {
+        notes.push('○ [SSIC] Story arc may not explicitly reflect breakthrough points');
+      }
+    } else {
+      totalScore += 5;
+      notes.push('○ [SSIC] No strong breakthrough points detected');
+    }
   }
 
   // ============================================================================

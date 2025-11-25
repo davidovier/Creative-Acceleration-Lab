@@ -13,16 +13,18 @@ import {
   debugLog,
 } from './config';
 import { buildStorySystemPrompt, formatInsightForPrompt } from './prompts';
+import { EnrichedContext } from '../ssic/context';
 
 /**
- * Story Architect Agent (Prompt 7: keyword & pronoun-aware)
+ * Story Architect Agent (Prompt 7: keyword & pronoun-aware + Prompt 9: SSIC-aware)
  * Transforms user's challenge into a hero's journey narrative
  */
 export async function runStoryAgent(
   userText: string,
   insight: InsightOutput,
   keywords: string[],
-  pronoun: string
+  pronoun: string,
+  ssicContext?: EnrichedContext
 ): Promise<StoryOutput> {
   const startTime = Date.now();
   console.log('[Story Agent] Crafting narrative...');
@@ -49,9 +51,9 @@ export async function runStoryAgent(
       contextLength: kbContext.length,
     });
 
-    // Step 2: Build system prompt using prompt builder with keywords & pronoun
+    // Step 2: Build system prompt using prompt builder with keywords, pronoun & SSIC
     const insightJson = formatInsightForPrompt(insight);
-    const systemPrompt = buildStorySystemPrompt(kbContext, insightJson, keywords, pronoun);
+    const systemPrompt = buildStorySystemPrompt(kbContext, insightJson, keywords, pronoun, ssicContext);
 
     // Step 3: Call Claude with fallback
     const fallbackObject: StoryOutput = {

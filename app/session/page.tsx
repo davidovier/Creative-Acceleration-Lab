@@ -60,6 +60,17 @@ interface SymbolOutput {
   color_palette_suggestions: ColorEmotion[];
 }
 
+interface SSICSummary {
+  resistance: string;
+  momentum: string;
+  charge: number;
+  velocity: number;
+  inertia: number;
+  flowPotential: number;
+  resistanceZones: string[];
+  breakthroughPoints: string[];
+}
+
 interface SessionReport {
   userText: string;
   timestamp: string;
@@ -77,6 +88,7 @@ interface SessionReport {
     pronoun: string;
     keywords: string[];
   };
+  ssic?: SSICSummary;
 }
 
 interface SessionResult {
@@ -684,6 +696,74 @@ function InsightStream({
               <span className="text-gray-500">Keywords:</span>
               <span className="ml-2 font-mono text-gray-700">{report.preprocessing.keywords.length}</span>
             </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* SSIC Physics (Debug Only) */}
+      {report.ssic && (
+        <motion.div
+          className="bg-purple-50 rounded-2xl shadow-lg p-4 border-2 border-purple-200"
+          variants={slideUp}
+        >
+          <h3 className="text-sm font-semibold text-purple-700 mb-3 flex items-center gap-2">
+            ⚛️ <span>SSIC Physics (Debug)</span>
+          </h3>
+          <div className="space-y-3 text-xs">
+            {/* Physics Values */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <div className="text-purple-500 text-[10px] uppercase tracking-wide">Charge</div>
+                <div className="font-mono text-purple-900">{report.ssic.charge.toFixed(0)}</div>
+              </div>
+              <div>
+                <div className="text-purple-500 text-[10px] uppercase tracking-wide">Velocity</div>
+                <div className="font-mono text-purple-900">{report.ssic.velocity.toFixed(0)}</div>
+              </div>
+              <div>
+                <div className="text-purple-500 text-[10px] uppercase tracking-wide">Inertia</div>
+                <div className="font-mono text-purple-900">{report.ssic.inertia.toFixed(0)}</div>
+              </div>
+              <div>
+                <div className="text-purple-500 text-[10px] uppercase tracking-wide">Flow</div>
+                <div className="font-mono text-purple-900">{report.ssic.flowPotential.toFixed(0)}</div>
+              </div>
+            </div>
+
+            {/* Resistance Profile */}
+            <div className="pt-2 border-t border-purple-200">
+              <div className="text-purple-500 text-[10px] uppercase tracking-wide mb-1">Resistance</div>
+              <div className="text-purple-800 text-[11px] leading-snug">{report.ssic.resistance}</div>
+            </div>
+
+            {/* Momentum Profile */}
+            <div className="pt-2 border-t border-purple-200">
+              <div className="text-purple-500 text-[10px] uppercase tracking-wide mb-1">Momentum</div>
+              <div className="text-purple-800 text-[11px] leading-snug">{report.ssic.momentum}</div>
+            </div>
+
+            {/* Zones */}
+            {report.ssic.resistanceZones.length > 0 && (
+              <div className="pt-2 border-t border-purple-200">
+                <div className="text-purple-500 text-[10px] uppercase tracking-wide mb-1">Resistance Zones</div>
+                <div className="space-y-1">
+                  {report.ssic.resistanceZones.map((zone, i) => (
+                    <div key={i} className="text-purple-700 text-[10px]">• {zone}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {report.ssic.breakthroughPoints.length > 0 && (
+              <div className="pt-2 border-t border-purple-200">
+                <div className="text-purple-500 text-[10px] uppercase tracking-wide mb-1">Breakthrough Points</div>
+                <div className="space-y-1">
+                  {report.ssic.breakthroughPoints.map((point, i) => (
+                    <div key={i} className="text-purple-700 text-[10px]">• {point}</div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       )}
