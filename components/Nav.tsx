@@ -16,31 +16,45 @@ export default function Nav() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [authEnabled, setAuthEnabled] = useState(true);
 
   useEffect(() => {
-    const supabase = createBrowserSupabaseClient();
+    // Try to initialize Supabase client
+    try {
+      const supabase = createBrowserSupabaseClient();
 
-    // Get initial user
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
+      // Get initial user
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        setUser(user);
+        setLoading(false);
+      });
+
+      // Listen for auth changes
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        setUser(session?.user || null);
+      });
+
+      return () => subscription.unsubscribe();
+    } catch (error) {
+      // If Supabase is not configured, just show logged-out nav
+      console.warn('Auth not configured:', error);
+      setAuthEnabled(false);
+      setUser(null);
       setLoading(false);
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user || null);
-    });
-
-    return () => subscription.unsubscribe();
+    }
   }, []);
 
   const handleLogout = async () => {
-    const supabase = createBrowserSupabaseClient();
-    await supabase.auth.signOut();
-    router.push('/');
-    router.refresh();
+    try {
+      const supabase = createBrowserSupabaseClient();
+      await supabase.auth.signOut();
+      router.push('/');
+      router.refresh();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   // Don't show nav on login/signup pages
@@ -120,17 +134,33 @@ export default function Nav() {
                   Home
                 </Link>
                 <Link
-                  href="/login"
+                  href="/session"
                   className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
                 >
-                  Login
+                  Session
                 </Link>
                 <Link
-                  href="/signup"
-                  className="text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  href="/kb"
+                  className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
                 >
-                  Sign Up
+                  KB
                 </Link>
+                {authEnabled && (
+                  <>
+                    <Link
+                      href="/login"
+                      className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                    >
+                      Login
+                    </Link>
+                    <Link
+                      href="/signup"
+                      className="text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                    >
+                      Sign Up
+                    </Link>
+                  </>
+                )}
               </>
             )}
           </div>
