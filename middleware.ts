@@ -9,35 +9,48 @@ import type { NextRequest } from 'next/server';
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req, res });
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  // Protected routes
-  const protectedPaths = ['/dashboard', '/projects', '/account', '/sessions'];
-  const isProtectedPath = protectedPaths.some((path) =>
-    req.nextUrl.pathname.startsWith(path)
-  );
-
-  // Redirect to login if accessing protected route without session
-  if (isProtectedPath && !session) {
-    const redirectUrl = req.nextUrl.clone();
-    redirectUrl.pathname = '/login';
-    redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname);
-    return NextResponse.redirect(redirectUrl);
+  // Skip middleware if environment variables are not configured
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.warn('Supabase environment variables not configured - skipping auth middleware');
+    return res;
   }
 
-  // Redirect to dashboard if accessing auth pages while logged in
-  const authPaths = ['/login', '/signup'];
-  const isAuthPath = authPaths.includes(req.nextUrl.pathname);
+  try {
+    const supabase = createMiddlewareClient({ req, res });
 
-  if (isAuthPath && session) {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    // Protected routes
+    const protectedPaths = ['/dashboard', '/projects', '/account', '/sessions'];
+    const isProtectedPath = protectedPaths.some((path) =>
+      req.nextUrl.pathname.startsWith(path)
+    );
+
+    // Redirect to login if accessing protected route without session
+    if (isProtectedPath && !session) {
+      const redirectUrl = req.nextUrl.clone();
+      redirectUrl.pathname = '/login';
+      redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname);
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Redirect to dashboard if accessing auth pages while logged in
+    const authPaths = ['/login', '/signup'];
+    const isAuthPath = authPaths.includes(req.nextUrl.pathname);
+
+    if (isAuthPath && session) {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
+
+    return res;
+  } catch (error) {
+    console.error('Middleware error:', error);
+    // Continue without auth if there's an error
+    return res;
   }
-
-  return res;
 }
 
 export const config = {
